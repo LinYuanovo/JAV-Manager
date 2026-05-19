@@ -5,7 +5,7 @@
   <img src="https://img.shields.io/badge/Dart-3.x+-0175C2?style=flat-square&logo=dart" alt="Dart">
   <img src="https://img.shields.io/badge/Platform-Windows-0078D6?style=flat-square&logo=windows" alt="Windows">
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
-  <img src="https://img.shields.io/badge/Version-1.1.0-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.1.1-blue?style=flat-square" alt="Version">
 </p>
 
 <p align="center">
@@ -177,8 +177,6 @@ JAV-Manager/
 
 ## 🙏 致谢
 
-- [Flutter Team](https://flutter.dev) - 优秀的跨平台框架
-- [Riverpod](https://riverpod.dev) - 强大的状态管理方案
 - [gfriends](https://github.com/gfriends/gfriends) - 演员头像资源仓库
 - [JavSP](https://github.com/Yuukiy/JavSP) - 元数据刮削器
-- [Trae](https://www.trae.cn/) - AI IDE
+

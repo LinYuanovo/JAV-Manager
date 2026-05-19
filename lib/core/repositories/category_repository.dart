@@ -8,10 +8,11 @@ class CategoryRepository {
   Future<List<Category>> getAllCategories() async {
     final db = await _db;
     final List<Map<String, dynamic>> maps = await db.rawQuery('''
-      SELECT c.*, COUNT(vc.video_id) as video_count,
-             CASE WHEN COUNT(vc.video_id) > 0 THEN 1 ELSE 0 END as has_videos
+      SELECT c.*, COUNT(v.id) as video_count,
+             CASE WHEN COUNT(v.id) > 0 THEN 1 ELSE 0 END as has_videos
       FROM categories c
       LEFT JOIN video_categories vc ON c.id = vc.category_id
+      LEFT JOIN videos v ON vc.video_id = v.id AND v.is_watched = 0
       GROUP BY c.id
       ORDER BY c.name ASC
     ''');
@@ -21,10 +22,11 @@ class CategoryRepository {
   Future<List<Category>> getCategoriesByType(String type) async {
     final db = await _db;
     final List<Map<String, dynamic>> maps = await db.rawQuery('''
-      SELECT c.*, COUNT(vc.video_id) as video_count,
-             CASE WHEN COUNT(vc.video_id) > 0 THEN 1 ELSE 0 END as has_videos
+      SELECT c.*, COUNT(v.id) as video_count,
+             CASE WHEN COUNT(v.id) > 0 THEN 1 ELSE 0 END as has_videos
       FROM categories c
       LEFT JOIN video_categories vc ON c.id = vc.category_id
+      LEFT JOIN videos v ON vc.video_id = v.id AND v.is_watched = 0
       WHERE c.type = ?
       GROUP BY c.id
       ORDER BY c.is_favorite DESC, c.name ASC
@@ -35,10 +37,11 @@ class CategoryRepository {
   Future<List<Category>> getFavoriteCategories() async {
     final db = await _db;
     final List<Map<String, dynamic>> maps = await db.rawQuery('''
-      SELECT c.*, COUNT(vc.video_id) as video_count,
-             CASE WHEN COUNT(vc.video_id) > 0 THEN 1 ELSE 0 END as has_videos
+      SELECT c.*, COUNT(v.id) as video_count,
+             CASE WHEN COUNT(v.id) > 0 THEN 1 ELSE 0 END as has_videos
       FROM categories c
       LEFT JOIN video_categories vc ON c.id = vc.category_id
+      LEFT JOIN videos v ON vc.video_id = v.id AND v.is_watched = 0
       WHERE c.is_favorite = 1
       GROUP BY c.id
       ORDER BY c.name ASC
@@ -61,10 +64,11 @@ class CategoryRepository {
   Future<List<Category>> getFavoriteCategoriesByType(String type) async {
     final db = await _db;
     final List<Map<String, dynamic>> maps = await db.rawQuery('''
-      SELECT c.*, COUNT(vc.video_id) as video_count,
-             CASE WHEN COUNT(vc.video_id) > 0 THEN 1 ELSE 0 END as has_videos
+      SELECT c.*, COUNT(v.id) as video_count,
+             CASE WHEN COUNT(v.id) > 0 THEN 1 ELSE 0 END as has_videos
       FROM categories c
       LEFT JOIN video_categories vc ON c.id = vc.category_id
+      LEFT JOIN videos v ON vc.video_id = v.id AND v.is_watched = 0
       WHERE c.type = ? AND c.is_favorite = 1
       GROUP BY c.id
       ORDER BY c.name ASC
@@ -75,10 +79,11 @@ class CategoryRepository {
   Future<Category?> getCategoryById(int id) async {
     final db = await _db;
     final List<Map<String, dynamic>> maps = await db.rawQuery('''
-      SELECT c.*, COUNT(vc.video_id) as video_count,
-             CASE WHEN COUNT(vc.video_id) > 0 THEN 1 ELSE 0 END as has_videos
+      SELECT c.*, COUNT(v.id) as video_count,
+             CASE WHEN COUNT(v.id) > 0 THEN 1 ELSE 0 END as has_videos
       FROM categories c
       LEFT JOIN video_categories vc ON c.id = vc.category_id
+      LEFT JOIN videos v ON vc.video_id = v.id AND v.is_watched = 0
       WHERE c.id = ?
       GROUP BY c.id
     ''', [id]);
@@ -89,10 +94,11 @@ class CategoryRepository {
   Future<Category?> getCategoryByNameAndType(String name, String type) async {
     final db = await _db;
     final List<Map<String, dynamic>> maps = await db.rawQuery('''
-      SELECT c.*, COUNT(vc.video_id) as video_count,
-             CASE WHEN COUNT(vc.video_id) > 0 THEN 1 ELSE 0 END as has_videos
+      SELECT c.*, COUNT(v.id) as video_count,
+             CASE WHEN COUNT(v.id) > 0 THEN 1 ELSE 0 END as has_videos
       FROM categories c
       LEFT JOIN video_categories vc ON c.id = vc.category_id
+      LEFT JOIN videos v ON vc.video_id = v.id AND v.is_watched = 0
       WHERE c.name = ? AND c.type = ?
       GROUP BY c.id
     ''', [name, type]);
@@ -168,10 +174,11 @@ class CategoryRepository {
   Future<List<Category>> searchCategories(String query, String type) async {
     final db = await _db;
     final List<Map<String, dynamic>> maps = await db.rawQuery('''
-      SELECT c.*, COUNT(vc.video_id) as video_count,
-             CASE WHEN COUNT(vc.video_id) > 0 THEN 1 ELSE 0 END as has_videos
+      SELECT c.*, COUNT(v.id) as video_count,
+             CASE WHEN COUNT(v.id) > 0 THEN 1 ELSE 0 END as has_videos
       FROM categories c
       LEFT JOIN video_categories vc ON c.id = vc.category_id
+      LEFT JOIN videos v ON vc.video_id = v.id AND v.is_watched = 0
       WHERE c.type = ? AND c.name LIKE ?
       GROUP BY c.id
       ORDER BY c.name ASC

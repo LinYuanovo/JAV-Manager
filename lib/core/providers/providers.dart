@@ -150,9 +150,11 @@ final allActorsProvider = FutureProvider<List<Actor>>((ref) async {
   }
   try {
     final repository = ref.watch(actorRepositoryProvider);
-    final result = await repository.getAllActors();
+    final actors = await repository.getAllActors();
+    // 过滤掉没有未观看视频且未收藏的演员
+    final result = actors.where((a) => a.videoCount > 0 || a.isFavorite).toList();
     if (kDebugMode) {
-      debugPrint('✅ Loaded ${result.length} actors');
+      debugPrint('✅ Loaded ${result.length} actors (filtered ${actors.length - result.length} orphaned)');
     }
     return result;
   } catch (e, stackTrace) {

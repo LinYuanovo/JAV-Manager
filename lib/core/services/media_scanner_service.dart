@@ -125,6 +125,9 @@ class MediaScannerService {
         }
       }
 
+      // 清理没有关联视频且未收藏的演员及其本地头像
+      await _cleanupOrphanedActors();
+
       if (kDebugMode) {
         debugPrint('✅ Media Scan Complete');
         debugPrint('Scanned ${mp4Files.length} files');
@@ -138,6 +141,50 @@ class MediaScannerService {
         debugPrint('═══════════════════════════════════════');
       }
       rethrow;
+    }
+  }
+
+  /// 清理没有关联视频且未收藏的演员及其本地头像文件
+  Future<void> _cleanupOrphanedActors() async {
+    try {
+      final orphanedActors = await _actorRepository.getOrphanedActors();
+      if (orphanedActors.isEmpty) return;
+
+      if (kDebugMode) {
+        debugPrint('[Cleanup] Found ${orphanedActors.length} orphaned actors');
+      }
+
+      for (final actor in orphanedActors) {
+        try {
+          // 删除本地头像文件
+          if (actor.avatarUrl != null && actor.avatarUrl!.isNotEmpty) {
+            final avatarFile = File(actor.avatarUrl!);
+            if (await avatarFile.exists()) {
+              await avatarFile.delete();
+              if (kDebugMode) debugPrint('[Cleanup] Deleted avatar: ${actor.avatarUrl}');
+            }
+          }
+
+          // 删除演员记录
+          if (actor.id != null) {
+            await _actorRepository.deleteActor(actor.id!);
+            if (kDebugMode) debugPrint('[Cleanup] Deleted actor: ${actor.name} (id=${actor.id})');
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint('[Cleanup] Error cleaning actor ${actor.name}: $e');
+          }
+        }
+      }
+
+      if (kDebugMode) {
+        debugPrint('[Cleanup] Actor cleanup complete');
+      }
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('[Cleanup] Error during orphaned actor cleanup: $e');
+        debugPrint('StackTrace: $stackTrace');
+      }
     }
   }
 

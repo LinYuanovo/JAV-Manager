@@ -141,11 +141,17 @@ class _CategoryVideosPageState extends ConsumerState<CategoryVideosPage> {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: ShaderMask(
-              shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
-              child: Text(
-                _category.name,
-                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+            child: GestureDetector(
+              onDoubleTap: () {
+                Clipboard.setData(ClipboardData(text: _category.name));
+                showCopyToast(context, '已复制$typeLabel');
+              },
+              child: ShaderMask(
+                shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+                child: Text(
+                  _category.name,
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+                ),
               ),
             ),
           ),

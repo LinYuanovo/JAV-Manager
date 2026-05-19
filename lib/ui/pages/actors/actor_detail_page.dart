@@ -257,14 +257,7 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
                 GestureDetector(
                   onDoubleTap: () {
                     Clipboard.setData(ClipboardData(text: _actor.name));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('已复制: ${_actor.name}'),
-                        duration: const Duration(seconds: 1),
-                        behavior: SnackBarBehavior.floating,
-                        width: 300,
-                      ),
-                    );
+                    showCopyToast(context, '已复制演员名');
                   },
                   child: Text(
                     _actor.name,

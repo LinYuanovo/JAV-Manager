@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-05-19
+
+### Fixed
+- 修复GitHub Actions打包后exe图标为默认Flutter图标
+- 修复自动整理后已看页面海报空白问题
+
+### Added
+- 双击视频标题复制番号（视频详情页）
+- 双击演员名字复制名字（演员详情页）
+- 复制成功显示SnackBar提示
+
 ## [1.1.0] - 2026-05-19
 
 ### Added

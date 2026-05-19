@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'dart:ui';
 
@@ -710,4 +711,93 @@ class _StaggeredItemState extends State<StaggeredItem>
       ),
     );
   }
+}
+
+// ===== 玻璃拟态复制提示弹窗 =====
+void showCopyToast(BuildContext context, String text) {
+  final overlay = Overlay.of(context);
+  late OverlayEntry overlayEntry;
+
+  overlayEntry = OverlayEntry(
+    builder: (ctx) => Positioned(
+      top: 60,
+      left: MediaQuery.of(context).size.width * 0.3,
+      right: MediaQuery.of(context).size.width * 0.3,
+      child: Material(
+        color: Colors.transparent,
+        child: Center(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(GlassConstants.radiusMedium),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: GlassConstants.blurSmall,
+                sigmaY: GlassConstants.blurSmall,
+              ),
+              child: AnimatedOpacity(
+                opacity: 1.0,
+                duration: GlassConstants.animFast,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(
+                      GlassConstants.radiusMedium,
+                    ),
+                    border: Border.all(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.12),
+                        blurRadius: 16,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 4),
+                      ),
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 30,
+                        spreadRadius: 0,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        color: AppTheme.primaryColor,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          text,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppTheme.primaryColor,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  overlay.insert(overlayEntry);
+  Timer(const Duration(seconds: 1, milliseconds: 500), () {
+    overlayEntry.remove();
+  });
 }

@@ -192,16 +192,11 @@ class _VideoDetailDialogState extends ConsumerState<VideoDetailDialog>
                   const SizedBox(height: 8),
                   GestureDetector(
                     onDoubleTap: () {
-                      final title = widget.video.title ?? '未知标题';
-                      Clipboard.setData(ClipboardData(text: title));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('已复制: $title'),
-                          duration: const Duration(seconds: 1),
-                          behavior: SnackBarBehavior.floating,
-                          width: 300,
-                        ),
-                      );
+                      final title = widget.video.title ?? '';
+                      final codeMatch = RegExp(r'([A-Z]{2,6}-\d{2,6})').firstMatch(title);
+                      final code = codeMatch?.group(0) ?? title;
+                      Clipboard.setData(ClipboardData(text: code));
+                      showCopyToast(context, '已复制番号');
                     },
                     child: ShaderMask(
                       shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),

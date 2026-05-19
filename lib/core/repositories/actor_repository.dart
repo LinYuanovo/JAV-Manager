@@ -11,7 +11,7 @@ class ActorRepository {
       SELECT a.*, COUNT(v.id) as video_count
       FROM actors a
       LEFT JOIN video_actors va ON a.id = va.actor_id
-      LEFT JOIN videos v ON va.video_id = v.id
+      LEFT JOIN videos v ON va.video_id = v.id AND v.is_watched = 0
       GROUP BY a.id
       ORDER BY a.name ASC
     ''');
@@ -24,7 +24,7 @@ class ActorRepository {
       SELECT a.*, COUNT(v.id) as video_count
       FROM actors a
       LEFT JOIN video_actors va ON a.id = va.actor_id
-      LEFT JOIN videos v ON va.video_id = v.id
+      LEFT JOIN videos v ON va.video_id = v.id AND v.is_watched = 0
       WHERE a.is_favorite = 1
       GROUP BY a.id
       ORDER BY a.name ASC
@@ -39,7 +39,7 @@ class ActorRepository {
       SELECT a.*, COUNT(v.id) as video_count
       FROM actors a
       LEFT JOIN video_actors va ON a.id = va.actor_id
-      LEFT JOIN videos v ON va.video_id = v.id
+      LEFT JOIN videos v ON va.video_id = v.id AND v.is_watched = 0
       GROUP BY a.id
       ORDER BY video_count $order
     ''');
@@ -52,7 +52,7 @@ class ActorRepository {
       SELECT a.*, COUNT(v.id) as video_count
       FROM actors a
       LEFT JOIN video_actors va ON a.id = va.actor_id
-      LEFT JOIN videos v ON va.video_id = v.id
+      LEFT JOIN videos v ON va.video_id = v.id AND v.is_watched = 0
       WHERE a.id = ?
       GROUP BY a.id
     ''', [id]);
@@ -66,7 +66,7 @@ class ActorRepository {
       SELECT a.*, COUNT(v.id) as video_count
       FROM actors a
       LEFT JOIN video_actors va ON a.id = va.actor_id
-      LEFT JOIN videos v ON va.video_id = v.id
+      LEFT JOIN videos v ON va.video_id = v.id AND v.is_watched = 0
       WHERE a.name = ?
       GROUP BY a.id
     ''', [name]);
@@ -106,6 +106,21 @@ class ActorRepository {
       where: 'id = ?',
       whereArgs: [id],
     );
+  }
+
+  /// 获取没有关联视频（排除已观看）且未收藏的演员（用于清理无用演员）
+  Future<List<Actor>> getOrphanedActors() async {
+    final db = await _db;
+    final List<Map<String, dynamic>> maps = await db.rawQuery('''
+      SELECT a.*
+      FROM actors a
+      LEFT JOIN video_actors va ON a.id = va.actor_id
+      LEFT JOIN videos v ON va.video_id = v.id AND v.is_watched = 0
+      WHERE a.is_favorite = 0
+      GROUP BY a.id
+      HAVING COUNT(v.id) = 0
+    ''');
+    return maps.map((map) => Actor.fromMap(map)).toList();
   }
 
   Future<void> toggleFavorite(int id, bool isFavorite) async {
