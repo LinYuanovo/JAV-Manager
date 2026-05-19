@@ -1,0 +1,73 @@
+name: Build and Release Windows App
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'prompt/**'
+      - '.gitignore'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.0'
+        channel: 'stable'
+
+    - name: Verify Flutter installation
+      run: flutter --version
+
+    - name: Get dependencies
+      run: flutter pub get
+
+    - name: Build Windows app
+      run: flutter build windows --release
+
+    - name: Get version from pubspec.yaml
+      id: get_version
+      shell: bash
+      run: echo "VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1)" >> $GITHUB_OUTPUT
+
+    - name: Create Release Archive
+      shell: bash
+      run: |
+        cd build/windows/x64/runner/Release
+        7z a -tzip ../../../JAV-Manager-${{ steps.get_version.outputs.VERSION }}.zip .
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ steps.get_version.outputs.VERSION }}
+        name: JAV-Manager v${{ steps.get_version.outputs.VERSION }}
+        body: |
+          ## JAV-Manager v${{ steps.get_version.outputs.VERSION }}
+          
+          ### 📦 下载说明
+          - 下载 `JAV-Manager-${{ steps.get_version.outputs.VERSION }}.zip`
+          - 解压到任意目录
+          - 运行 `JAV-Manager.exe`
+          
+          ### ✨ 更新内容
+          查看完整更新日志请访问 [CHANGELOG.md](https://github.com/LinYuanovo/JAV-Manager/blob/main/CHANGELOG.md)
+        files: |
+          build/JAV-Manager-${{ steps.get_version.outputs.VERSION }}.zip
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: JAV-Manager-Windows-${{ steps.get_version.outputs.VERSION }}
+        path: build/windows/x64/runner/Release/
+        retention-days: 30

@@ -83,6 +83,11 @@ final fontSizeProvider = StateProvider<double>((ref) {
   return prefs.getDouble('font_size') ?? 14.0;
 });
 
+final enableGridAnimationProvider = StateProvider<bool>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return prefs.getBool('enable_grid_animation') ?? true;
+});
+
 final watchedVideosProvider = FutureProvider<List<Video>>((ref) async {
   if (kDebugMode) {
     debugPrint('📺 Loading watched videos...');
@@ -331,6 +336,16 @@ final fixedColumnCountProvider = StateProvider<int>((ref) {
   return prefs.getInt('media_fixed_column_count') ?? 4;
 });
 
+final favoriteFixedColumnCountProvider = StateProvider<int>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return prefs.getInt('favorite_fixed_column_count') ?? 0; // 0 means auto
+});
+
+final favoriteIsFixedColumnCountProvider = StateProvider<bool>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return prefs.getBool('favorite_is_fixed_column') ?? false;
+});
+
 final isScanningProvider = StateProvider<bool>((ref) => false);
 
 final isActorFixedColumnCountProvider = StateProvider<bool>((ref) {
@@ -343,6 +358,18 @@ final actorFixedColumnCountProvider = StateProvider<int>((ref) {
   return prefs.getInt('actor_fixed_column_count') ?? 5;
 });
 
+final actorSortModeProvider = StateProvider<SortMode>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  final sortIndex = prefs.getInt('actor_sort_mode') ?? 0;
+  return SortMode.values[sortIndex];
+});
+
+final actorViewModeProvider = StateProvider<ViewMode>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  final viewIndex = prefs.getInt('actor_view_mode') ?? 2;
+  return ViewMode.values[viewIndex];
+});
+
 final isCategoryFixedColumnCountProvider = StateProvider<bool>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   return prefs.getBool('category_is_fixed_column') ?? false;
@@ -351,4 +378,16 @@ final isCategoryFixedColumnCountProvider = StateProvider<bool>((ref) {
 final categoryFixedColumnCountProvider = StateProvider<int>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   return prefs.getInt('category_fixed_column_count') ?? 4;
+});
+
+final categorySortModeProvider = StateProvider<SortMode>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  final sortIndex = prefs.getInt('category_sort_mode') ?? 0;
+  return SortMode.values[sortIndex];
+});
+
+final categoryViewModeProvider = StateProvider<ViewMode>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  final viewIndex = prefs.getInt('category_view_mode') ?? 2;
+  return ViewMode.values[viewIndex];
 });

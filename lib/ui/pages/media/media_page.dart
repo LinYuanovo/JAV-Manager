@@ -69,23 +69,30 @@ class _MediaPageState extends ConsumerState<MediaPage> {
                 onFavoriteToggle: (video) => _toggleFavorite(video),
               );
             },
-            loading: () => const Center(
-              child: CircularProgressIndicator(color: AppTheme.primaryColor),
+            loading: () => Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentGradient.colors.first),
+              ),
             ),
             error: (error, stack) => Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, color: AppTheme.errorColor, size: 48),
-                  const SizedBox(height: 16),
-                  Text('加载失败: $error', style: const TextStyle(color: AppTheme.errorColor)),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: () => ref.invalidate(allVideosProvider),
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('重试'),
-                  ),
-                ],
+              child: GlassContainer(
+                margin: const EdgeInsets.all(GlassConstants.spacingLarge),
+                padding: const EdgeInsets.all(GlassConstants.spacingLarge),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline, color: AppTheme.errorColor, size: 48),
+                    const SizedBox(height: GlassConstants.spacingMedium),
+                    Text('加载失败: $error', style: const TextStyle(color: AppTheme.errorColor)),
+                    const SizedBox(height: GlassConstants.spacingMedium),
+                    ElevatedButton.icon(
+                      onPressed: () => ref.invalidate(allVideosProvider),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('重试'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -96,36 +103,25 @@ class _MediaPageState extends ConsumerState<MediaPage> {
 
   Widget _buildHeader(SortMode sortMode, ViewMode viewMode) {
     return GlassContainer(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(GlassConstants.spacingMedium),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
         children: [
-          const Text('媒体库', style: TextStyle(color: AppTheme.textPrimary, fontSize: 20, fontWeight: FontWeight.w600)),
-          const SizedBox(width: 24),
+          ShaderMask(
+            shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+            child: const Text('媒体库', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w600)),
+          ),
+          const SizedBox(width: GlassConstants.spacingLarge),
           Expanded(
-            child: Container(
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppTheme.backgroundColor.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (value) => setState(() => _searchQuery = value),
-                style: const TextStyle(color: AppTheme.textPrimary),
-                decoration: const InputDecoration(
-                  hintText: '搜索视频...',
-                  hintStyle: TextStyle(color: AppTheme.textSecondary),
-                  prefixIcon: Icon(Icons.search, color: AppTheme.textSecondary),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 10),
-                ),
-              ),
+            child: GlassSearchBar(
+              controller: _searchController,
+              hintText: '搜索视频...',
+              onChanged: (value) => setState(() => _searchQuery = value),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: GlassConstants.spacingMedium),
           _buildSortButton(sortMode),
-          const SizedBox(width: 8),
+          const SizedBox(width: GlassConstants.spacingSmall),
           IconButton(
             icon: const Icon(Icons.shuffle, color: AppTheme.textSecondary),
             tooltip: '随机排序',
@@ -135,11 +131,11 @@ class _MediaPageState extends ConsumerState<MediaPage> {
               });
             },
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: GlassConstants.spacingSmall),
           _buildViewModeButton(viewMode),
-          const SizedBox(width: 8),
+          const SizedBox(width: GlassConstants.spacingSmall),
           _buildColumnCountControl(),
-          const SizedBox(width: 8),
+          const SizedBox(width: GlassConstants.spacingSmall),
           _buildRefreshButton(),
         ],
       ),
@@ -208,12 +204,12 @@ class _MediaPageState extends ConsumerState<MediaPage> {
             style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
             decoration: InputDecoration(
               hintText: '自动',
-              hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5), fontSize: 11),
+              hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha:0.5), fontSize: 11),
               contentPadding: const EdgeInsets.symmetric(vertical: 6),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.2))),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.2))),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(GlassConstants.radiusMedium), borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha:0.2))),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(GlassConstants.radiusMedium), borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha:0.2))),
               filled: true,
-              fillColor: isFixed ? AppTheme.primaryColor.withValues(alpha: 0.1) : AppTheme.backgroundColor.withValues(alpha: 0.5),
+              fillColor: isFixed ? AppTheme.primaryColor.withValues(alpha:0.1) : Colors.white.withValues(alpha:0.5),
             ),
             onSubmitted: (value) {
               final prefs = ref.read(sharedPreferencesProvider);

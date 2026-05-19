@@ -20,10 +20,10 @@ class CategoryVideosPage extends ConsumerStatefulWidget {
 }
 
 class _CategoryVideosPageState extends ConsumerState<CategoryVideosPage> {
-  SortMode _sortMode = SortMode.titleAsc;
-  ViewMode _viewMode = ViewMode.posterWithTitle;
+  late SortMode _sortMode;
+  late ViewMode _viewMode;
   final _columnCountController = TextEditingController();
-  bool _isFixedColumnCount = false;
+  late bool _isFixedColumnCount;
   int? _fixedColumnCount;
   late Category _category;
 
@@ -31,10 +31,18 @@ class _CategoryVideosPageState extends ConsumerState<CategoryVideosPage> {
   void initState() {
     super.initState();
     _category = widget.category;
-    final fixedCount = ref.read(fixedColumnCountProvider);
-    _fixedColumnCount = fixedCount;
-    _isFixedColumnCount = false;
-    _columnCountController.text = '';
+
+    final prefs = ref.read(sharedPreferencesProvider);
+    final sortIndex = prefs.getInt('category_sort_mode') ?? 0;
+    final viewIndex = prefs.getInt('category_view_mode') ?? 2;
+    _sortMode = SortMode.values[sortIndex];
+    _viewMode = ViewMode.values[viewIndex];
+
+    _isFixedColumnCount = prefs.getBool('category_is_fixed_column') ?? false;
+    _fixedColumnCount = prefs.getInt('category_fixed_column_count');
+    if (_fixedColumnCount != null && _fixedColumnCount! > 0) {
+      _columnCountController.text = _fixedColumnCount.toString();
+    }
   }
 
   @override
@@ -66,9 +74,9 @@ class _CategoryVideosPageState extends ConsumerState<CategoryVideosPage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.movie_outlined, size: 64, color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+                        Icon(Icons.movie_outlined, size: 64, color: AppTheme.textSecondary.withValues(alpha:0.5)),
                         const SizedBox(height: 16),
-                        Text('该分类暂无影片', style: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5), fontSize: 16)),
+                        Text('该分类暂无影片', style: TextStyle(color: AppTheme.textSecondary.withValues(alpha:0.5), fontSize: 16)),
                       ],
                     ),
                   );
@@ -85,7 +93,7 @@ class _CategoryVideosPageState extends ConsumerState<CategoryVideosPage> {
                   onFavoriteToggle: (video) => _toggleFavorite(video),
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
+              loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primaryLightColor)),
               error: (error, stack) => Center(child: Text('加载失败: $error', style: const TextStyle(color: AppTheme.errorColor))),
             ),
           ),
@@ -124,22 +132,31 @@ class _CategoryVideosPageState extends ConsumerState<CategoryVideosPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: typeColor.withValues(alpha: 0.15),
+              gradient: LinearGradient(
+                colors: [typeColor.withValues(alpha:0.3), typeColor.withValues(alpha:0.1)],
+              ),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(typeLabel, style: TextStyle(color: typeColor, fontSize: 12, fontWeight: FontWeight.w500)),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              _category.name,
-              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w600),
+            child: ShaderMask(
+              shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+              child: Text(
+                _category.name,
+                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+              ),
             ),
           ),
           PopupMenuButton<SortMode>(
             tooltip: '排序方式',
             icon: const Icon(Icons.sort, color: AppTheme.textSecondary),
-            onSelected: (v) => setState(() => _sortMode = v),
+            onSelected: (v) async {
+              setState(() => _sortMode = v);
+              final prefs = ref.read(sharedPreferencesProvider);
+              await prefs.setInt('category_sort_mode', v.index);
+            },
             itemBuilder: (_) => const [
               PopupMenuItem(value: SortMode.titleAsc, child: Text('标题 A-Z')),
               PopupMenuItem(value: SortMode.titleDesc, child: Text('标题 Z-A')),
@@ -152,7 +169,11 @@ class _CategoryVideosPageState extends ConsumerState<CategoryVideosPage> {
           PopupMenuButton<ViewMode>(
             tooltip: '视图模式',
             icon: Icon(_getViewModeIcon(_viewMode), color: AppTheme.textSecondary),
-            onSelected: (v) => setState(() => _viewMode = v),
+            onSelected: (v) async {
+              setState(() => _viewMode = v);
+              final prefs = ref.read(sharedPreferencesProvider);
+              await prefs.setInt('category_view_mode', v.index);
+            },
             itemBuilder: (_) => const [
               PopupMenuItem(value: ViewMode.list, child: Text('列表')),
               PopupMenuItem(value: ViewMode.poster, child: Text('海报图')),
@@ -196,26 +217,31 @@ class _CategoryVideosPageState extends ConsumerState<CategoryVideosPage> {
             style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
             decoration: InputDecoration(
               hintText: '自动',
-              hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5), fontSize: 11),
+              hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha:0.5), fontSize: 11),
               contentPadding: const EdgeInsets.symmetric(vertical: 6),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.2))),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.2))),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(GlassConstants.radiusSmall), borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha:0.2))),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(GlassConstants.radiusSmall), borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha:0.2))),
               filled: true,
-              fillColor: _isFixedColumnCount ? AppTheme.primaryColor.withValues(alpha: 0.1) : AppTheme.backgroundColor.withValues(alpha: 0.5),
+              fillColor: _isFixedColumnCount ? AppTheme.primaryColor.withValues(alpha:0.1) : AppTheme.backgroundColor.withValues(alpha:0.5),
             ),
-            onSubmitted: (value) {
+            onSubmitted: (value) async {
               final count = int.tryParse(value);
               if (count != null && count > 0) {
                 setState(() {
                   _fixedColumnCount = count;
                   _isFixedColumnCount = true;
                 });
+                final prefs = ref.read(sharedPreferencesProvider);
+                await prefs.setBool('category_is_fixed_column', true);
+                await prefs.setInt('category_fixed_column_count', count);
               } else {
                 setState(() {
                   _isFixedColumnCount = false;
                   _fixedColumnCount = null;
                 });
                 _columnCountController.clear();
+                final prefs = ref.read(sharedPreferencesProvider);
+                await prefs.setBool('category_is_fixed_column', false);
               }
             },
           ),

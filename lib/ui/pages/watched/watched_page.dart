@@ -55,13 +55,13 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
                       Icon(
                         Icons.visibility_outlined,
                         size: 64,
-                        color: AppTheme.successColor.withValues(alpha: 0.3),
+                        color: AppTheme.successColor.withValues(alpha:0.3),
                       ),
                       const SizedBox(height: 16),
                       Text(
                         '暂无已看记录',
                         style: TextStyle(
-                          color: AppTheme.textSecondary.withValues(alpha: 0.5),
+                          color: AppTheme.textSecondary.withValues(alpha:0.5),
                           fontSize: 16,
                         ),
                       ),
@@ -105,12 +105,15 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
           const SizedBox(width: 12),
           Row(
             children: [
-              const Text(
-                '已看',
-                style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
+              ShaderMask(
+                shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+                child: const Text(
+                  '已看',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -143,33 +146,14 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Container(
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppTheme.backgroundColor.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
-                style: const TextStyle(color: AppTheme.textPrimary),
-                decoration: InputDecoration(
-                  hintText: '搜索已观看影片...',
-                  hintStyle: TextStyle(
-                    color: AppTheme.textSecondary.withValues(alpha: 0.5),
-                  ),
-                  prefixIcon: Icon(
-                    Icons.search,
-                    color: AppTheme.textSecondary.withValues(alpha: 0.5),
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                ),
-              ),
+            child: GlassSearchBar(
+              controller: _searchController,
+              hintText: '搜索已观看影片...',
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
             ),
           ),
         ],
@@ -184,7 +168,7 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: AppTheme.successColor.withValues(alpha: 0.15),
+        color: AppTheme.successColor.withValues(alpha:0.15),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -374,7 +358,7 @@ class _WatchedVideoCardState extends ConsumerState<_WatchedVideoCard>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 200),
+      duration: GlassConstants.animFast,
       vsync: this,
     );
     _scaleAnimation = Tween<double>(begin: 1.0, end: 1.01).animate(
@@ -414,11 +398,11 @@ class _WatchedVideoCardState extends ConsumerState<_WatchedVideoCard>
           child: GlassContainer(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
-            color: AppTheme.cardColor.withValues(alpha: _isHovered ? 0.7 : 0.5),
+            color: AppTheme.cardColor.withValues(alpha:_isHovered ? 0.7 : 0.5),
             child: Row(
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(GlassConstants.radiusLarge),
                   child: SizedBox(
                     width: 240,
                     height: 135,
@@ -479,7 +463,12 @@ class _WatchedVideoCardState extends ConsumerState<_WatchedVideoCard>
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: AppTheme.successColor.withValues(alpha: 0.15),
+                    gradient: LinearGradient(
+                      colors: [
+                        AppTheme.successColor.withValues(alpha:0.25),
+                        AppTheme.successColor.withValues(alpha:0.1),
+                      ],
+                    ),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
@@ -536,7 +525,7 @@ class _WatchedVideoCardState extends ConsumerState<_WatchedVideoCard>
           Text(
             _formatDate(widget.video.lastWatchedTime),
             style: TextStyle(
-              color: AppTheme.textSecondary.withValues(alpha: 0.7),
+              color: AppTheme.textSecondary.withValues(alpha:0.7),
               fontSize: 11,
             ),
           ),

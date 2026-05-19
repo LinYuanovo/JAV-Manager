@@ -98,8 +98,10 @@ class JAVManagerApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme(fontFamily: fontFamily.isEmpty ? null : fontFamily),
       builder: (context, child) {
-        return ErrorBoundary(
-          child: child ?? const SizedBox.shrink(),
+        return GradientBackground(
+          child: ErrorBoundary(
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
       home: const HomePage(),

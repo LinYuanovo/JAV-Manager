@@ -8,9 +8,10 @@ class ActorRepository {
   Future<List<Actor>> getAllActors() async {
     final db = await _db;
     final List<Map<String, dynamic>> maps = await db.rawQuery('''
-      SELECT a.*, COUNT(va.video_id) as video_count
+      SELECT a.*, COUNT(v.id) as video_count
       FROM actors a
       LEFT JOIN video_actors va ON a.id = va.actor_id
+      LEFT JOIN videos v ON va.video_id = v.id
       GROUP BY a.id
       ORDER BY a.name ASC
     ''');
@@ -20,9 +21,10 @@ class ActorRepository {
   Future<List<Actor>> getFavoriteActors() async {
     final db = await _db;
     final List<Map<String, dynamic>> maps = await db.rawQuery('''
-      SELECT a.*, COUNT(va.video_id) as video_count
+      SELECT a.*, COUNT(v.id) as video_count
       FROM actors a
       LEFT JOIN video_actors va ON a.id = va.actor_id
+      LEFT JOIN videos v ON va.video_id = v.id
       WHERE a.is_favorite = 1
       GROUP BY a.id
       ORDER BY a.name ASC
@@ -34,9 +36,10 @@ class ActorRepository {
     final db = await _db;
     final order = descending ? 'DESC' : 'ASC';
     final List<Map<String, dynamic>> maps = await db.rawQuery('''
-      SELECT a.*, COUNT(va.video_id) as video_count
+      SELECT a.*, COUNT(v.id) as video_count
       FROM actors a
       LEFT JOIN video_actors va ON a.id = va.actor_id
+      LEFT JOIN videos v ON va.video_id = v.id
       GROUP BY a.id
       ORDER BY video_count $order
     ''');
@@ -46,9 +49,10 @@ class ActorRepository {
   Future<Actor?> getActorById(int id) async {
     final db = await _db;
     final List<Map<String, dynamic>> maps = await db.rawQuery('''
-      SELECT a.*, COUNT(va.video_id) as video_count
+      SELECT a.*, COUNT(v.id) as video_count
       FROM actors a
       LEFT JOIN video_actors va ON a.id = va.actor_id
+      LEFT JOIN videos v ON va.video_id = v.id
       WHERE a.id = ?
       GROUP BY a.id
     ''', [id]);
@@ -59,9 +63,10 @@ class ActorRepository {
   Future<Actor?> getActorByName(String name) async {
     final db = await _db;
     final List<Map<String, dynamic>> maps = await db.rawQuery('''
-      SELECT a.*, COUNT(va.video_id) as video_count
+      SELECT a.*, COUNT(v.id) as video_count
       FROM actors a
       LEFT JOIN video_actors va ON a.id = va.actor_id
+      LEFT JOIN videos v ON va.video_id = v.id
       WHERE a.name = ?
       GROUP BY a.id
     ''', [name]);

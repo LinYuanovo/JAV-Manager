@@ -102,27 +102,16 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage>
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
         children: [
-          const Text('分类', style: TextStyle(color: AppTheme.textPrimary, fontSize: 20, fontWeight: FontWeight.w600)),
+          ShaderMask(
+            shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+            child: const Text('分类', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w600)),
+          ),
           const SizedBox(width: 24),
           Expanded(
-            child: Container(
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppTheme.backgroundColor.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (value) => setState(() => _searchQuery = value),
-                style: const TextStyle(color: AppTheme.textPrimary),
-                decoration: InputDecoration(
-                  hintText: _getSearchHint(),
-                  hintStyle: const TextStyle(color: AppTheme.textSecondary),
-                  prefixIcon: const Icon(Icons.search, color: AppTheme.textSecondary),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                ),
-              ),
+            child: GlassSearchBar(
+              controller: _searchController,
+              hintText: _getSearchHint(),
+              onChanged: (value) => setState(() => _searchQuery = value),
             ),
           ),
         const SizedBox(width: 12),
@@ -220,12 +209,12 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage>
             style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
             decoration: InputDecoration(
               hintText: '自动',
-              hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5), fontSize: 11),
+              hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha:0.5), fontSize: 11),
               contentPadding: const EdgeInsets.symmetric(vertical: 6),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.2))),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.2))),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(GlassConstants.radiusSmall), borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha:0.2))),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(GlassConstants.radiusSmall), borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha:0.2))),
               filled: true,
-              fillColor: _isFixedColumnCount ? AppTheme.primaryColor.withValues(alpha: 0.1) : AppTheme.backgroundColor.withValues(alpha: 0.5),
+              fillColor: _isFixedColumnCount ? AppTheme.primaryColor.withValues(alpha:0.1) : AppTheme.backgroundColor.withValues(alpha:0.5),
             ),
             onSubmitted: (value) {
               final prefs = ref.read(sharedPreferencesProvider);
@@ -254,15 +243,11 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage>
   }
 
   Widget _buildTabBar() {
-    return Container(
+    return GlassContainer(
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor.withValues(alpha: 0.3),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
-        ),
-      ),
+      borderRadius: GlassConstants.radiusLarge,
+      color: Colors.white.withValues(alpha:0.4),
+      padding: EdgeInsets.zero,
       child: TabBar(
         controller: _tabController,
         indicatorColor: AppTheme.primaryColor,
@@ -369,9 +354,9 @@ class _CategoryGrid extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.category_outlined, size: 64, color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+            Icon(Icons.category_outlined, size: 64, color: AppTheme.textSecondary.withValues(alpha:0.5)),
             const SizedBox(height: 16),
-            Text('暂无分类', style: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5), fontSize: 16)),
+            Text('暂无分类', style: TextStyle(color: AppTheme.textSecondary.withValues(alpha:0.5), fontSize: 16)),
           ],
         ),
       );
@@ -387,8 +372,8 @@ class _CategoryGrid extends StatelessWidget {
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
             childAspectRatio: 2.5,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
+            crossAxisSpacing: GlassConstants.spacingMedium,
+            mainAxisSpacing: GlassConstants.spacingMedium,
           ),
           itemCount: categories.length,
           itemBuilder: (context, index) => _CategoryCard(category: categories[index]),
@@ -414,7 +399,7 @@ class _CategoryCardState extends ConsumerState<_CategoryCard>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 200), vsync: this);
+    _controller = AnimationController(duration: GlassConstants.animFast, vsync: this);
     _scaleAnimation = Tween<double>(begin: 1.0, end: 1.02).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
     );
@@ -442,8 +427,8 @@ class _CategoryCardState extends ConsumerState<_CategoryCard>
             children: [
               GlassContainer(
                 color: widget.category.hasVideos
-                    ? AppTheme.cardColor.withValues(alpha: 0.6)
-                    : AppTheme.surfaceColor.withValues(alpha: 0.3),
+                    ? AppTheme.cardColor.withValues(alpha:0.6)
+                    : AppTheme.surfaceColor.withValues(alpha:0.3),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
@@ -466,14 +451,14 @@ class _CategoryCardState extends ConsumerState<_CategoryCard>
                           Text(
                             '${widget.category.videoCount} 部影片',
                             style: TextStyle(
-                              color: AppTheme.textSecondary.withValues(alpha: widget.category.hasVideos ? 0.7 : 0.4),
+                              color: AppTheme.textSecondary.withValues(alpha:widget.category.hasVideos ? 0.7 : 0.4),
                               fontSize: 12,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    Icon(Icons.arrow_forward_ios, size: 14, color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+                    Icon(Icons.arrow_forward_ios, size: 14, color: AppTheme.textSecondary.withValues(alpha:0.5)),
                   ],
                 ),
               ),
@@ -485,7 +470,7 @@ class _CategoryCardState extends ConsumerState<_CategoryCard>
                   child: Icon(
                     widget.category.isFavorite ? Icons.favorite : Icons.favorite_border,
                     size: 16,
-                    color: widget.category.isFavorite ? AppTheme.accentColor : AppTheme.textSecondary.withValues(alpha: 0.3),
+                    color: widget.category.isFavorite ? AppTheme.accentColor : AppTheme.textSecondary.withValues(alpha:0.3),
                   ),
                 ),
               ),

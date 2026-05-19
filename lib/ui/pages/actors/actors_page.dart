@@ -71,19 +71,19 @@ class _ActorsPageState extends ConsumerState<ActorsPage> {
                     .toList();
               }
 
-              if (_sortByCount) {
-                filteredActors.sort((a, b) => _sortDescending
-                    ? b.videoCount.compareTo(a.videoCount)
-                    : a.videoCount.compareTo(b.videoCount));
-              } else {
-                filteredActors.sort((a, b) {
-                  if (a.isFavorite && !b.isFavorite) return -1;
-                  if (!a.isFavorite && b.isFavorite) return 1;
+              filteredActors.sort((a, b) {
+                // Always prioritize favorites
+                if (a.isFavorite && !b.isFavorite) return -1;
+                if (!a.isFavorite && b.isFavorite) return 1;
+                if (_sortByCount) {
                   return _sortDescending
-                      ? b.name.compareTo(a.name)
-                      : a.name.compareTo(b.name);
-                });
-              }
+                      ? b.videoCount.compareTo(a.videoCount)
+                      : a.videoCount.compareTo(b.videoCount);
+                }
+                return _sortDescending
+                    ? b.name.compareTo(a.name)
+                    : a.name.compareTo(b.name);
+              });
 
               if (filteredActors.isEmpty) {
                 return Center(
@@ -93,13 +93,13 @@ class _ActorsPageState extends ConsumerState<ActorsPage> {
                       Icon(
                         Icons.people_outline,
                         size: 64,
-                        color: AppTheme.textSecondary.withValues(alpha: 0.5),
+                        color: AppTheme.textSecondary.withValues(alpha:0.5),
                       ),
                       const SizedBox(height: 16),
                       Text(
                         '暂无演员',
                         style: TextStyle(
-                          color: AppTheme.textSecondary.withValues(alpha: 0.5),
+                          color: AppTheme.textSecondary.withValues(alpha:0.5),
                           fontSize: 16,
                         ),
                       ),
@@ -133,43 +133,27 @@ class _ActorsPageState extends ConsumerState<ActorsPage> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
         children: [
-          const Text(
-            '演员库',
-            style: TextStyle(
-              color: AppTheme.textPrimary,
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
+          ShaderMask(
+            shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+            child: const Text(
+              '演员库',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           const SizedBox(width: 24),
           Expanded(
-            child: Container(
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppTheme.backgroundColor.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
-                style: const TextStyle(color: AppTheme.textPrimary),
-                decoration: InputDecoration(
-                  hintText: '搜索演员...',
-                  hintStyle: TextStyle(
-                    color: AppTheme.textSecondary.withValues(alpha: 0.5),
-                  ),
-                  prefixIcon: Icon(
-                    Icons.search,
-                    color: AppTheme.textSecondary.withValues(alpha: 0.5),
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                ),
-              ),
+            child: GlassSearchBar(
+              controller: _searchController,
+              hintText: '搜索演员...',
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
             ),
           ),
           const SizedBox(width: 16),
@@ -246,7 +230,7 @@ class _ActorsPageState extends ConsumerState<ActorsPage> {
   Widget _buildSortOptions() {
     return Row(
       children: [
-        _buildSortChip(
+        GlassChip(
           label: '名称',
           isSelected: !_sortByCount,
           onTap: () {
@@ -257,7 +241,7 @@ class _ActorsPageState extends ConsumerState<ActorsPage> {
           },
         ),
         const SizedBox(width: 8),
-        _buildSortChip(
+        GlassChip(
           label: '影片数量',
           isSelected: _sortByCount,
           onTap: () {
@@ -287,37 +271,6 @@ class _ActorsPageState extends ConsumerState<ActorsPage> {
     );
   }
 
-  Widget _buildSortChip({
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppTheme.primaryColor.withValues(alpha: 0.2)
-              : AppTheme.surfaceColor.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected
-                ? AppTheme.primaryColor.withValues(alpha: 0.5)
-                : Colors.transparent,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? AppTheme.primaryColor : AppTheme.textSecondary,
-            fontSize: 13,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildColumnCountControl() {
     final isFixed = ref.watch(isActorFixedColumnCountProvider);
     return Row(
@@ -333,12 +286,12 @@ class _ActorsPageState extends ConsumerState<ActorsPage> {
             style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
             decoration: InputDecoration(
               hintText: '自动',
-              hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5), fontSize: 11),
+              hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha:0.5), fontSize: 11),
               contentPadding: const EdgeInsets.symmetric(vertical: 6),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.2))),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.2))),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(GlassConstants.radiusSmall - 4), borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha:0.2))),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(GlassConstants.radiusSmall - 4), borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha:0.2))),
               filled: true,
-              fillColor: isFixed ? AppTheme.primaryColor.withValues(alpha: 0.1) : AppTheme.backgroundColor.withValues(alpha: 0.5),
+              fillColor: isFixed ? AppTheme.primaryColor.withValues(alpha:0.1) : AppTheme.backgroundColor.withValues(alpha:0.5),
             ),
             onSubmitted: (value) {
               final prefs = ref.read(sharedPreferencesProvider);
@@ -593,7 +546,7 @@ class _ActorCardState extends State<_ActorCard>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 200),
+      duration: GlassConstants.animFast,
       vsync: this,
     );
     _scaleAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
@@ -617,7 +570,6 @@ class _ActorCardState extends State<_ActorCard>
         child: AnimatedBuilder(
           animation: _scaleAnimation,
           builder: (context, child) {
-            final isHovered = _scaleAnimation.value > 1.0;
             return Transform.scale(
               scale: _scaleAnimation.value,
               child: child,
@@ -630,31 +582,28 @@ class _ActorCardState extends State<_ActorCard>
                   children: [
                     Container(
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
+                        shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: _scaleAnimation.value > 1.0
-                                ? AppTheme.primaryColor.withValues(alpha: 0.3)
-                                : Colors.black.withValues(alpha: 0.2),
-                            blurRadius: _scaleAnimation.value > 1.0 ? 20 : 10,
-                            offset: const Offset(0, 5),
+                            color: AppTheme.primaryColor.withValues(alpha:0.2),
+                            blurRadius: 20,
+                            offset: const Offset(0, 4),
                           ),
                         ],
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
+                      child: ClipOval(
                         child: _buildAvatar(),
                       ),
                     ),
                     Positioned(
-                      top: 8,
-                      right: 8,
+                      top: 4,
+                      right: 4,
                       child: GestureDetector(
                         onTap: widget.onFavoriteToggle,
                         child: Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.5),
+                            color: Colors.white.withValues(alpha:0.4),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -671,16 +620,16 @@ class _ActorCardState extends State<_ActorCard>
                     ),
                     if (widget.actor.videoCount > 0)
                       Positioned(
-                        bottom: 8,
-                        right: 8,
+                        bottom: 4,
+                        right: 4,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withValues(alpha: 0.8),
-                            borderRadius: BorderRadius.circular(12),
+                            gradient: AppTheme.accentGradient,
+                            borderRadius: BorderRadius.circular(GlassConstants.radiusSmall),
                           ),
                           child: Text(
                             '${widget.actor.videoCount}',
@@ -745,12 +694,15 @@ class _ActorCardState extends State<_ActorCard>
     return Container(
       color: AppTheme.cardColor,
       child: Center(
-        child: Text(
-          widget.actor.name.substring(0, 1).toUpperCase(),
-          style: const TextStyle(
-            color: AppTheme.primaryColor,
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
+        child: ShaderMask(
+          shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+          child: Text(
+            widget.actor.name.substring(0, 1).toUpperCase(),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ),

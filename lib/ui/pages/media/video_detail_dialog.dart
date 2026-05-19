@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,18 +21,18 @@ class VideoDetailDialog extends ConsumerStatefulWidget {
 class _VideoDetailDialogState extends ConsumerState<VideoDetailDialog>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 200),
       vsync: this,
     );
-    _scaleAnimation = CurvedAnimation(
+    _fadeAnimation = CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeOutBack,
+      curve: Curves.easeOut,
     );
     _controller.forward();
   }
@@ -52,8 +53,8 @@ class _VideoDetailDialogState extends ConsumerState<VideoDetailDialog>
       },
       child: Focus(
         autofocus: true,
-        child: ScaleTransition(
-          scale: _scaleAnimation,
+        child: FadeTransition(
+          opacity: _fadeAnimation,
           child: Dialog(
             backgroundColor: Colors.transparent,
             insetPadding: const EdgeInsets.all(40),
@@ -61,17 +62,17 @@ class _VideoDetailDialogState extends ConsumerState<VideoDetailDialog>
               width: screenSize.width * 0.85,
               height: screenSize.height * 0.85,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(GlassConstants.radiusXLarge),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.5),
+                    color: Colors.black.withValues(alpha:0.5),
                     blurRadius: 40,
                     offset: const Offset(0, 20),
                   ),
                 ],
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(GlassConstants.radiusXLarge),
                 child: Row(
                   children: [
                     _buildLeftPanel(screenSize),
@@ -88,7 +89,8 @@ class _VideoDetailDialogState extends ConsumerState<VideoDetailDialog>
 
   Widget _buildLeftPanel(Size screenSize) {
     final leftWidth = screenSize.width * 0.85 * 0.7;
-    return SizedBox(
+    return RepaintBoundary(
+      child: SizedBox(
       width: leftWidth,
       child: Stack(
         fit: StackFit.expand,
@@ -116,8 +118,8 @@ class _VideoDetailDialogState extends ConsumerState<VideoDetailDialog>
                 end: Alignment.centerRight,
                 colors: [
                   Colors.transparent,
-                  Colors.black.withValues(alpha: 0.1),
-                  Colors.black.withValues(alpha: 0.4),
+                  Colors.black.withValues(alpha:0.1),
+                  Colors.black.withValues(alpha:0.4),
                 ],
                 stops: const [0.0, 0.6, 1.0],
               ),
@@ -134,17 +136,17 @@ class _VideoDetailDialogState extends ConsumerState<VideoDetailDialog>
                     width: 140,
                     height: 200,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(GlassConstants.radiusSmall),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.5),
+                          color: Colors.black.withValues(alpha:0.5),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         ),
                       ],
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(GlassConstants.radiusSmall),
                       child: Image.file(
                         File(widget.video.posterPath!),
                         fit: BoxFit.cover,
@@ -158,97 +160,109 @@ class _VideoDetailDialogState extends ConsumerState<VideoDetailDialog>
           ),
         ],
       ),
+      ),
     );
   }
 
   Widget _buildRightPanel() {
     return Expanded(
-      child: Container(
-        color: AppTheme.surfaceColor,
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+      child: ClipRRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: GlassConstants.blurMedium,
+            sigmaY: GlassConstants.blurMedium,
+          ),
+          child: Container(
+            color: Colors.white.withValues(alpha:0.85),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    color: AppTheme.textSecondary,
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                widget.video.title ?? '未知标题',
-                style: const TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-                maxLines: null,
-                overflow: TextOverflow.visible,
-              ),
-              if (widget.video.plot != null && widget.video.plot!.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Text(
-                  widget.video.plot!,
-                  style: TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontSize: 14,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 16),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
                     children: [
-                      if (widget.video.actors.isNotEmpty) ...[
-                        _buildSectionTitle('演员'),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: widget.video.actors.map((actor) {
-                            return GestureDetector(
-                              onTap: () {
-                                Navigator.of(context).pop();
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(builder: (_) => ActorDetailPage(actor: actor)),
-                                );
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
-                                ),
-                                child: Text(
-                                  actor.name,
-                                  style: const TextStyle(color: AppTheme.primaryColor, fontSize: 13),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 20),
-                      ],
-                      _buildTagsSection(),
-                      const SizedBox(height: 20),
-                      _buildInfoSection(),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        color: AppTheme.textSecondary,
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
                     ],
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  ShaderMask(
+                    shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+                    child: Text(
+                      widget.video.title ?? '未知标题',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: null,
+                      overflow: TextOverflow.visible,
+                    ),
+                  ),
+                  if (widget.video.plot != null && widget.video.plot!.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      widget.video.plot!,
+                      style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 14,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (widget.video.actors.isNotEmpty) ...[
+                            _buildSectionTitle('演员'),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: widget.video.actors.map((actor) {
+                                return GestureDetector(
+                                  onTap: () {
+                                    Navigator.of(context).pop();
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(builder: (_) => ActorDetailPage(actor: actor)),
+                                    );
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primaryColor.withValues(alpha:0.15),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: AppTheme.primaryColor.withValues(alpha:0.3)),
+                                    ),
+                                    child: Text(
+                                      actor.name,
+                                      style: const TextStyle(color: AppTheme.primaryColor, fontSize: 13),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+                          _buildTagsSection(),
+                          const SizedBox(height: 20),
+                          _buildInfoSection(),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildActionButtons(),
+                ],
               ),
-              const SizedBox(height: 16),
-              _buildActionButtons(),
-            ],
+            ),
           ),
         ),
       ),
@@ -308,13 +322,20 @@ class _VideoDetailDialogState extends ConsumerState<VideoDetailDialog>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: AppTheme.primaryColor.withValues(alpha: 0.15),
+          color: Colors.white.withValues(alpha:0.6),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
+          border: Border.all(color: AppTheme.primaryColor.withValues(alpha:0.2)),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.primaryColor.withValues(alpha:0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Text(
           category.name,
-          style: const TextStyle(color: AppTheme.primaryColor, fontSize: 13),
+          style: TextStyle(color: AppTheme.primaryColor.withValues(alpha:0.9), fontSize: 13),
         ),
       ),
     );
@@ -361,42 +382,84 @@ class _VideoDetailDialogState extends ConsumerState<VideoDetailDialog>
     return Row(
       children: [
         Expanded(
-          child: ElevatedButton.icon(
-            onPressed: _playVideo,
-            icon: const Icon(Icons.play_arrow, size: 22),
-            label: const Text('播放', style: TextStyle(fontSize: 16)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: AppTheme.accentGradient,
+              borderRadius: BorderRadius.circular(GlassConstants.radiusSmall),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.accentColor.withValues(alpha:0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ElevatedButton.icon(
+              onPressed: _playVideo,
+              icon: const Icon(Icons.play_arrow, size: 22),
+              label: const Text('播放', style: TextStyle(fontSize: 16)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(GlassConstants.radiusSmall)),
+              ),
             ),
           ),
         ),
         const SizedBox(width: 12),
-        IconButton(
-          onPressed: _toggleFavorite,
-          icon: Icon(
-            widget.video.isFavorite ? Icons.favorite : Icons.favorite_border,
-            color: widget.video.isFavorite ? AppTheme.accentColor : AppTheme.textSecondary,
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha:0.7),
+            borderRadius: BorderRadius.circular(GlassConstants.radiusSmall),
+            border: Border.all(color: AppTheme.borderColor.withValues(alpha:0.3)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha:0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          iconSize: 28,
-          style: IconButton.styleFrom(
-            backgroundColor: AppTheme.backgroundColor,
-            padding: const EdgeInsets.all(12),
+          child: IconButton(
+            onPressed: _toggleFavorite,
+            icon: Icon(
+              widget.video.isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: widget.video.isFavorite ? AppTheme.accentColor : AppTheme.textSecondary,
+            ),
+            iconSize: 28,
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              padding: const EdgeInsets.all(12),
+            ),
           ),
         ),
         const SizedBox(width: 8),
-          IconButton(
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha:0.7),
+            borderRadius: BorderRadius.circular(GlassConstants.radiusSmall),
+            border: Border.all(color: AppTheme.borderColor.withValues(alpha:0.3)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha:0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: IconButton(
             onPressed: _openFolder,
             icon: const Icon(Icons.folder_open),
             color: AppTheme.textSecondary,
             tooltip: '打开文件夹',
             style: IconButton.styleFrom(
-              backgroundColor: AppTheme.backgroundColor,
+              backgroundColor: Colors.transparent,
               padding: const EdgeInsets.all(12),
             ),
           ),
+        ),
       ],
     );
   }

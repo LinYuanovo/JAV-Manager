@@ -25,6 +25,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   String? _proxyTestResult;
   String _selectedFont = '';
   double _fontSize = 14.0;
+  bool _enableGridAnimation = true;
+  bool _enableAutoMove = true;
 
   @override
   void initState() {
@@ -51,6 +53,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _proxyUrlController = TextEditingController(text: proxyUrl);
     _selectedFont = font;
     _fontSize = fontSize;
+    _enableGridAnimation = prefs.getBool('enable_grid_animation') ?? true;
+    _enableAutoMove = prefs.getBool('enable_auto_move') ?? true;
   }
 
   @override
@@ -71,6 +75,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeader(),
+          const SizedBox(height: 32),
+          _buildActionsSection(),
           const SizedBox(height: 32),
           _buildSection(
             title: '媒体库设置',
@@ -120,29 +126,32 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(height: 24),
           _buildFontSection(),
           const SizedBox(height: 24),
+          _buildDisplaySection(),
+          const SizedBox(height: 24),
           _buildProxySection(),
-          const SizedBox(height: 32),
-          _buildActionsSection(),
         ],
       ),
     );
   }
 
   Widget _buildHeader() {
-    return const Row(
+    return Row(
       children: [
-        Icon(
+        const Icon(
           Icons.settings,
-          color: AppTheme.textSecondary,
+          color: AppTheme.primaryColor,
           size: 28,
         ),
-        SizedBox(width: 12),
-        Text(
-          '设置',
-          style: TextStyle(
-            color: AppTheme.textPrimary,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
+        const SizedBox(width: 12),
+        ShaderMask(
+          shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+          child: const Text(
+            '设置',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ],
@@ -203,17 +212,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: AppTheme.backgroundColor.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.white.withValues(alpha:0.5),
+                  borderRadius: BorderRadius.circular(GlassConstants.radiusMedium),
                   border: Border.all(
-                    color: AppTheme.textSecondary.withValues(alpha: 0.2),
+                    color: AppTheme.textSecondary.withValues(alpha:0.2),
                   ),
                 ),
                 child: Text(
                   controller.text.isEmpty ? hint : controller.text,
                   style: TextStyle(
                     color: controller.text.isEmpty
-                        ? AppTheme.textSecondary.withValues(alpha: 0.5)
+                        ? AppTheme.textSecondary.withValues(alpha:0.5)
                         : AppTheme.textPrimary,
                     fontSize: 14,
                   ),
@@ -225,11 +234,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ElevatedButton(
               onPressed: onBrowse,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.15),
+                backgroundColor: AppTheme.primaryColor.withValues(alpha:0.15),
                 foregroundColor: AppTheme.primaryColor,
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(GlassConstants.radiusMedium),
                 ),
               ),
               child: const Text('浏览'),
@@ -269,10 +278,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           width: 100,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: AppTheme.backgroundColor.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(12),
+            color: Colors.white.withValues(alpha:0.5),
+            borderRadius: BorderRadius.circular(GlassConstants.radiusMedium),
             border: Border.all(
-              color: AppTheme.textSecondary.withValues(alpha: 0.2),
+              color: AppTheme.textSecondary.withValues(alpha:0.2),
             ),
           ),
           child: Row(
@@ -307,34 +316,51 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Widget _buildAutoMoveSetting() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.warningColor.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppTheme.warningColor.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.info_outline,
-            color: AppTheme.warningColor,
-            size: 20,
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Text(
-              '已观看的影片（观看次数 ≥ 1）将在每次扫描后自动移动到"已观看影片目录"',
-              style: TextStyle(
-                color: AppTheme.warningColor,
-                fontSize: 12,
+    return Column(
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('自动移动已观看影片', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                  SizedBox(height: 4),
+                  Text('每次扫描后将已观看的影片自动移到"已观看影片目录"', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                ],
               ),
+            ),
+            Switch(
+              value: _enableAutoMove,
+              onChanged: (value) => setState(() => _enableAutoMove = value),
+              activeColor: AppTheme.primaryColor,
+            ),
+          ],
+        ),
+        if (_enableAutoMove) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.warningColor.withValues(alpha:0.1),
+              borderRadius: BorderRadius.circular(GlassConstants.radiusMedium),
+              border: Border.all(color: AppTheme.warningColor.withValues(alpha:0.3)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline, color: AppTheme.warningColor, size: 20),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    '已观看的影片（观看次数 ≥ 1）将在每次扫描后自动移动到"已观看影片目录"',
+                    style: TextStyle(color: AppTheme.warningColor, fontSize: 12),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
-      ),
+      ],
     );
   }
 
@@ -354,9 +380,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  color: AppTheme.backgroundColor.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.textSecondary.withValues(alpha: 0.2)),
+                  color: Colors.white.withValues(alpha:0.5),
+                  borderRadius: BorderRadius.circular(GlassConstants.radiusMedium),
+                  border: Border.all(color: AppTheme.textSecondary.withValues(alpha:0.2)),
                 ),
                 child: DropdownButton<String>(
                   value: _selectedFont.isEmpty ? null : _selectedFont,
@@ -382,80 +408,76 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
             ),
             const SizedBox(width: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withValues(alpha:0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '${_fontSize.toStringAsFixed(1)} px',
+                style: TextStyle(
+                  color: AppTheme.primaryColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '${_fontSize.toStringAsFixed(1)} px',
-                          style: TextStyle(
-                            color: AppTheme.primaryColor,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.remove, size: 18),
-                        onPressed: () {
-                          if (_fontSize > 10.0) {
-                            setState(() => _fontSize -= 0.5);
-                          }
-                        },
-                        color: AppTheme.textSecondary,
-                        tooltip: '减小字号',
-                      ),
-                      Slider(
-                        value: _fontSize,
-                        min: 10.0,
-                        max: 24.0,
-                        divisions: 28,
-                        label: '${_fontSize.toStringAsFixed(1)} px',
-                        onChanged: (value) {
-                          setState(() => _fontSize = value);
-                        },
-                        activeColor: AppTheme.primaryColor,
-                        inactiveColor: AppTheme.textSecondary.withValues(alpha: 0.2),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.add, size: 18),
-                        onPressed: () {
-                          if (_fontSize < 24.0) {
-                            setState(() => _fontSize += 0.5);
-                          }
-                        },
-                        color: AppTheme.textSecondary,
-                        tooltip: '增大字号',
-                      ),
-                    ],
+                  IconButton(
+                    icon: const Icon(Icons.remove, size: 18),
+                    onPressed: () {
+                      if (_fontSize > 10.0) {
+                        setState(() => _fontSize -= 0.5);
+                      }
+                    },
+                    color: AppTheme.textSecondary,
+                    tooltip: '减小字号',
                   ),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.backgroundColor.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(8),
+                  Expanded(
+                    child: Slider(
+                      value: _fontSize,
+                      min: 10.0,
+                      max: 24.0,
+                      divisions: 28,
+                      label: '${_fontSize.toStringAsFixed(1)} px',
+                      onChanged: (value) {
+                        setState(() => _fontSize = value);
+                      },
+                      activeColor: AppTheme.primaryColor,
+                      inactiveColor: AppTheme.textSecondary.withValues(alpha:0.2),
                     ),
-                    child: Text(
-                      '预览文字 AaBbCc 中文测试 123',
-                      style: TextStyle(
-                        fontSize: _fontSize,
-                        fontFamily: _selectedFont.isNotEmpty ? _selectedFont : null,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add, size: 18),
+                    onPressed: () {
+                      if (_fontSize < 24.0) {
+                        setState(() => _fontSize += 0.5);
+                      }
+                    },
+                    color: AppTheme.textSecondary,
+                    tooltip: '增大字号',
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.backgroundColor.withValues(alpha:0.3),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '预览 AaBbCc 中文 123',
+                style: TextStyle(
+                  fontSize: _fontSize,
+                  fontFamily: _selectedFont.isNotEmpty ? _selectedFont : null,
+                  color: AppTheme.textPrimary,
+                ),
               ),
             ),
           ],
@@ -463,7 +485,37 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         const SizedBox(height: 8),
         Text(
           '选择后需点击"保存设置"并重启应用生效',
-          style: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.6), fontSize: 11),
+          style: TextStyle(color: AppTheme.textSecondary.withValues(alpha:0.6), fontSize: 11),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDisplaySection() {
+    return _buildSection(
+      title: '显示设置',
+      icon: Icons.visibility_outlined,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('网格加载动画', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                  SizedBox(height: 4),
+                  Text('关闭后视频卡片将立即显示，滚动更流畅', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                ],
+              ),
+            ),
+            Switch(
+              value: _enableGridAnimation,
+              onChanged: (value) {
+                setState(() => _enableGridAnimation = value);
+              },
+              activeColor: AppTheme.primaryColor,
+            ),
+          ],
         ),
       ],
     );
@@ -476,11 +528,48 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       children: [
         Row(
           children: [
-            _buildProxyModeChip('none', '不使用代理'),
+            GlassChip(
+              label: '不使用代理',
+              isSelected: _proxyMode == 'none',
+              onTap: () => setState(() => _proxyMode = 'none'),
+            ),
             const SizedBox(width: 8),
-            _buildProxyModeChip('system', '使用系统代理'),
+            GlassChip(
+              label: '使用系统代理',
+              isSelected: _proxyMode == 'system',
+              onTap: () => setState(() => _proxyMode = 'system'),
+            ),
             const SizedBox(width: 8),
-            _buildProxyModeChip('custom', '自定义代理'),
+            GlassChip(
+              label: '自定义代理',
+              isSelected: _proxyMode == 'custom',
+              onTap: () => setState(() => _proxyMode = 'custom'),
+            ),
+            const SizedBox(width: 12),
+            ElevatedButton.icon(
+              onPressed: _isTestingProxy ? null : _testProxy,
+              icon: _isTestingProxy
+                  ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : Icon(Icons.network_check, size: 18),
+              label: Text('测试连接'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            if (_proxyTestResult != null)
+              Padding(
+                padding: EdgeInsets.only(left: 12),
+                child: Text(
+                  _proxyTestResult!,
+                  style: TextStyle(
+                    color: _proxyTestResult!.contains('成功') ? AppTheme.successColor : AppTheme.errorColor,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
           ],
         ),
         if (_proxyMode == 'custom') ...[
@@ -490,84 +579,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             children: [
               const Text('代理地址', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _proxyUrlController,
-                      style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
-                      decoration: InputDecoration(
-                        hintText: '例如: 127.0.0.1:7890',
-                        hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5)),
-                        filled: true,
-                        fillColor: AppTheme.backgroundColor.withValues(alpha: 0.5),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.2))),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.2))),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      ),
-                    ),
-                  ),
-                ],
+              TextField(
+                controller: _proxyUrlController,
+                style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: '例如: 127.0.0.1:7890',
+                  hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha:0.5)),
+                  filled: true,
+                  fillColor: Colors.white.withValues(alpha:0.5),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(GlassConstants.radiusMedium), borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha:0.2))),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(GlassConstants.radiusMedium), borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha:0.2))),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
               ),
             ],
           ),
         ],
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            ElevatedButton.icon(
-              onPressed: _isTestingProxy ? null : _testProxy,
-              icon: _isTestingProxy
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.network_check, size: 18),
-              label: const Text('测试连接'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            const SizedBox(width: 12),
-            if (_proxyTestResult != null)
-              Text(
-                _proxyTestResult!,
-                style: TextStyle(
-                  color: _proxyTestResult!.contains('成功') ? AppTheme.successColor : AppTheme.errorColor,
-                  fontSize: 13,
-                ),
-              ),
-          ],
-        ),
       ],
-    );
-  }
-
-  Widget _buildProxyModeChip(String mode, String label) {
-    final isSelected = _proxyMode == mode;
-    return GestureDetector(
-      onTap: () => setState(() => _proxyMode = mode),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppTheme.primaryColor.withValues(alpha: 0.2)
-              : AppTheme.surfaceColor.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected
-                ? AppTheme.primaryColor.withValues(alpha: 0.5)
-                : Colors.transparent,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? AppTheme.primaryColor : AppTheme.textSecondary,
-            fontSize: 13,
-          ),
-        ),
-      ),
     );
   }
 
@@ -685,9 +713,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     await prefs.setString('proxy_url', _proxyUrlController.text);
     await prefs.setString('font_family', _selectedFont);
     await prefs.setDouble('font_size', _fontSize);
+    await prefs.setBool('enable_grid_animation', _enableGridAnimation);
+    await prefs.setBool('enable_auto_move', _enableAutoMove);
 
     final autoTaskService = ref.read(autoTaskServiceProvider);
     await autoTaskService.setScanInterval(interval);
+
+    ref.invalidate(enableGridAnimationProvider);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -759,17 +791,17 @@ class _ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(GlassConstants.radiusMedium),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(GlassConstants.radiusMedium),
         onTap: isLoading ? null : onPressed,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(12),
+            color: color.withValues(alpha:0.15),
+            borderRadius: BorderRadius.circular(GlassConstants.radiusMedium),
             border: Border.all(
-              color: color.withValues(alpha: 0.3),
+              color: color.withValues(alpha:0.3),
             ),
           ),
           child: Row(

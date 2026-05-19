@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,14 +28,22 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
   late Animation<double> _fadeAnimation;
   late Actor _actor;
   bool _isLoadingInfo = false;
-  SortMode _sortMode = SortMode.titleAsc;
-  ViewMode _viewMode = ViewMode.posterWithTitle;
+  late SortMode _sortMode;
+  late ViewMode _viewMode;
   int _avatarKey = 0;
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
     _actor = widget.actor;
+
+    final prefs = ref.read(sharedPreferencesProvider);
+    final sortIndex = prefs.getInt('actor_sort_mode') ?? 0;
+    final viewIndex = prefs.getInt('actor_view_mode') ?? 2;
+    _sortMode = SortMode.values[sortIndex];
+    _viewMode = ViewMode.values[viewIndex];
+
     _controller = AnimationController(
       duration: const Duration(milliseconds: 400),
       vsync: this,
@@ -44,12 +53,14 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
       curve: Curves.easeOut,
     );
     _controller.forward();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _focusNode.requestFocus());
     _fetchActorInfo();
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -90,158 +101,187 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
   Widget build(BuildContext context) {
     final videosAsync = ref.watch(videosByActorProvider(_actor.id!));
 
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.escape): () => Navigator.of(context).pop(),
+    return KeyboardListener(
+      focusNode: _focusNode,
+      onKeyEvent: (event) {
+        if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) {
+          Navigator.of(context).pop();
+        }
       },
       child: Scaffold(
         backgroundColor: AppTheme.backgroundColor,
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildInfoPanel(),
-                  Expanded(
-                    child: _buildVideosPanel(videosAsync),
-                  ),
-                ],
+        body: FadeTransition(
+          opacity: _fadeAnimation,
+          child: Column(
+            children: [
+              _buildHeader(),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildInfoPanel(),
+                    Expanded(
+                      child: _buildVideosPanel(videosAsync),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
 
   Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor.withValues(alpha: 0.4),
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.white.withValues(alpha: 0.05),
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(
+          sigmaX: GlassConstants.blurLarge,
+          sigmaY: GlassConstants.blurLarge,
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha:0.7),
+            border: Border(
+              bottom: BorderSide(
+                color: Colors.white.withValues(alpha:0.3),
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                color: AppTheme.textSecondary,
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              const SizedBox(width: 8),
+              ShaderMask(
+                shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+                child: const Text(
+                  '演员详情',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: _toggleFavorite,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha:0.8),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _actor.isFavorite ? Icons.favorite : Icons.favorite_border,
+                    color: _actor.isFavorite ? AppTheme.accentColor : AppTheme.textSecondary.withValues(alpha:0.8),
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back),
-            color: AppTheme.textSecondary,
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          const SizedBox(width: 8),
-          const Text(
-            '演员详情',
-            style: TextStyle(
-              color: AppTheme.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const Spacer(),
-          IconButton(
-            icon: Icon(
-              _actor.isFavorite ? Icons.favorite : Icons.favorite_border,
-              color:
-                  _actor.isFavorite ? AppTheme.accentColor : AppTheme.textSecondary,
-            ),
-            onPressed: _toggleFavorite,
-          ),
-        ],
       ),
     );
   }
 
   Widget _buildInfoPanel() {
-    return Container(
-      width: 320,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor.withValues(alpha: 0.3),
-        border: Border(
-          right: BorderSide(
-            color: Colors.white.withValues(alpha: 0.05),
-          ),
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(
+          sigmaX: GlassConstants.blurMedium,
+          sigmaY: GlassConstants.blurMedium,
         ),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          children: [
-            Container(
-              width: 180,
-              height: 180,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(90),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.3),
-                    blurRadius: 30,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
+        child: Container(
+          width: 320,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha:0.4),
+            border: Border(
+              right: BorderSide(
+                color: Colors.white.withValues(alpha:0.2),
               ),
-              child: Stack(
-                children: [
-                  ClipOval(
-                    child: _buildAvatar(),
+            ),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                Container(
+                  width: 180,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(90),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryColor.withValues(alpha:0.2),
+                        blurRadius: 30,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
                   ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: GestureDetector(
-                      onTap: _showAvatarSelectionDialog,
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.6),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.photo_camera,
-                          size: 18,
-                          color: Colors.white,
+                  child: Stack(
+                    children: [
+                      ClipOval(
+                        child: _buildAvatar(),
+                      ),
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: GestureDetector(
+                          onTap: _showAvatarSelectionDialog,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha:0.8),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.photo_camera,
+                              size: 18,
+                              color: Colors.white.withValues(alpha:0.85),
+                            ),
+                          ),
                         ),
                       ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  _actor.name,
+                  style: const TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.primaryGradient,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${_actor.videoCount} 部作品',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              _actor.name,
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                '${_actor.videoCount} 部作品',
-                style: const TextStyle(
-                  color: AppTheme.primaryColor,
-                  fontSize: 14,
                 ),
-              ),
+                const SizedBox(height: 32),
+                _buildInfoCard(),
+              ],
             ),
-            const SizedBox(height: 32),
-            _buildInfoCard(),
-          ],
+          ),
         ),
       ),
     );
@@ -274,12 +314,15 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
     return Container(
       color: AppTheme.cardColor,
       child: Center(
-        child: Text(
-          _actor.name.substring(0, 1).toUpperCase(),
-          style: const TextStyle(
-            color: AppTheme.primaryColor,
-            fontSize: 64,
-            fontWeight: FontWeight.bold,
+        child: ShaderMask(
+          shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+          child: Text(
+            _actor.name.substring(0, 1).toUpperCase(),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 64,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ),
@@ -352,14 +395,14 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
                     Icon(
                       Icons.info_outline,
                       size: 48,
-                      color: AppTheme.textSecondary.withValues(alpha: 0.5),
+                      color: AppTheme.textSecondary.withValues(alpha:0.5),
                     ),
                     const SizedBox(height: 12),
                     Text(
                       '点击获取按钮从 Wikipedia 加载演员信息',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: AppTheme.textSecondary.withValues(alpha: 0.7),
+                        color: AppTheme.textSecondary.withValues(alpha:0.7),
                         fontSize: 13,
                       ),
                     ),
@@ -408,20 +451,27 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
           padding: const EdgeInsets.all(24),
           child: Row(
             children: [
-              const Text('出演作品', style: TextStyle(color: AppTheme.textPrimary, fontSize: 18, fontWeight: FontWeight.w600)),
+              ShaderMask(
+                shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+                child: const Text('出演作品', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
+              ),
               const SizedBox(width: 12),
               videosAsync.whenOrNull(
                 data: (videos) => Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
-                  child: Text('${videos.length}', style: const TextStyle(color: AppTheme.primaryColor, fontSize: 13)),
+                  decoration: BoxDecoration(gradient: AppTheme.primaryGradient, borderRadius: BorderRadius.circular(12)),
+                  child: Text('${videos.length}', style: const TextStyle(color: Colors.white, fontSize: 13)),
                 ),
               ) ?? const SizedBox(),
               const Spacer(),
               PopupMenuButton<SortMode>(
                 tooltip: '排序方式',
                 icon: const Icon(Icons.sort, color: AppTheme.textSecondary),
-                onSelected: (v) => setState(() => _sortMode = v),
+                onSelected: (v) async {
+                  setState(() => _sortMode = v);
+                  final prefs = ref.read(sharedPreferencesProvider);
+                  await prefs.setInt('actor_sort_mode', v.index);
+                },
                 itemBuilder: (_) => const [
                   PopupMenuItem(value: SortMode.titleAsc, child: Text('标题 A-Z')),
                   PopupMenuItem(value: SortMode.titleDesc, child: Text('标题 Z-A')),
@@ -433,7 +483,11 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
               PopupMenuButton<ViewMode>(
                 tooltip: '视图模式',
                 icon: Icon(_getViewModeIcon(_viewMode), color: AppTheme.textSecondary),
-                onSelected: (v) => setState(() => _viewMode = v),
+                onSelected: (v) async {
+                  setState(() => _viewMode = v);
+                  final prefs = ref.read(sharedPreferencesProvider);
+                  await prefs.setInt('actor_view_mode', v.index);
+                },
                 itemBuilder: (_) => const [
                   PopupMenuItem(value: ViewMode.list, child: Text('列表')),
                   PopupMenuItem(value: ViewMode.poster, child: Text('海报图')),
@@ -452,9 +506,9 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.movie_outlined, size: 64, color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+                      Icon(Icons.movie_outlined, size: 64, color: AppTheme.textSecondary.withValues(alpha:0.5)),
                       const SizedBox(height: 16),
-                      Text('暂无出演作品', style: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5), fontSize: 16)),
+                      Text('暂无出演作品', style: TextStyle(color: AppTheme.textSecondary.withValues(alpha:0.5), fontSize: 16)),
                     ],
                   ),
                 );
@@ -745,11 +799,12 @@ class _AvatarSelectionDialogState extends State<_AvatarSelectionDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: AppTheme.surfaceColor,
-      child: Container(
+      backgroundColor: Colors.transparent,
+      child: GlassContainer(
+        borderRadius: GlassConstants.radiusXLarge,
+        padding: const EdgeInsets.all(24),
         width: 600,
         height: 500,
-        padding: const EdgeInsets.all(24),
         child: Column(
           children: [
             Row(
@@ -814,7 +869,7 @@ class _AvatarSelectionDialogState extends State<_AvatarSelectionDialog> {
                         boxShadow: isSelected
                             ? [
                                 BoxShadow(
-                                  color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                                  color: AppTheme.primaryColor.withValues(alpha:0.3),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),

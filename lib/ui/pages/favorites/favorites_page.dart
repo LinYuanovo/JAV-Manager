@@ -65,34 +65,23 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
         children: [
           const Icon(Icons.favorite, color: AppTheme.accentColor, size: 24),
           const SizedBox(width: 12),
-          const Text(
-            '我的收藏',
-            style: TextStyle(
-              color: AppTheme.textPrimary,
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
+          ShaderMask(
+            shaderCallback: (bounds) => AppTheme.accentGradient.createShader(bounds),
+            child: const Text(
+              '我的收藏',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           const SizedBox(width: 24),
           Expanded(
-            child: Container(
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppTheme.backgroundColor.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (value) => setState(() => _searchQuery = value),
-                style: const TextStyle(color: AppTheme.textPrimary),
-                decoration: const InputDecoration(
-                  hintText: '搜索收藏...',
-                  hintStyle: TextStyle(color: AppTheme.textSecondary),
-                  prefixIcon: Icon(Icons.search, color: AppTheme.textSecondary),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 10),
-                ),
-              ),
+            child: GlassSearchBar(
+              controller: _searchController,
+              hintText: '搜索收藏...',
+              onChanged: (value) => setState(() => _searchQuery = value),
             ),
           ),
         ],
@@ -101,15 +90,11 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
   }
 
   Widget _buildTabBar() {
-    return Container(
+    return GlassContainer(
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor.withValues(alpha: 0.3),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
-        ),
-      ),
+      borderRadius: GlassConstants.radiusLarge,
+      color: Colors.white.withValues(alpha:0.4),
+      padding: EdgeInsets.zero,
       child: TabBar(
         controller: _tabController,
         indicatorColor: AppTheme.accentColor,
@@ -139,7 +124,7 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: AppTheme.accentColor.withValues(alpha: 0.2),
+                color: AppTheme.accentColor.withValues(alpha:0.2),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
@@ -193,8 +178,8 @@ class _FavoriteVideosTab extends ConsumerWidget {
               child: VideoGrid(
                 videos: filtered,
                 viewMode: viewMode,
-                isFixedColumnCount: ref.watch(isFixedColumnCountProvider),
-                fixedColumnCount: ref.watch(fixedColumnCountProvider),
+                isFixedColumnCount: ref.watch(favoriteIsFixedColumnCountProvider),
+                fixedColumnCount: ref.watch(favoriteFixedColumnCountProvider),
                 onVideoTap: (video) => _showVideoDetail(context, video),
                 onFavoriteToggle: (video) => _toggleFavorite(ref, video),
               ),
@@ -309,13 +294,13 @@ class _FavoriteVideosTab extends ConsumerWidget {
           Icon(
             icon,
             size: 64,
-            color: AppTheme.accentColor.withValues(alpha: 0.3),
+            color: AppTheme.accentColor.withValues(alpha:0.3),
           ),
           const SizedBox(height: 16),
           Text(
             message,
             style: TextStyle(
-              color: AppTheme.textSecondary.withValues(alpha: 0.5),
+              color: AppTheme.textSecondary.withValues(alpha:0.5),
               fontSize: 16,
             ),
           ),
@@ -403,13 +388,13 @@ class _FavoriteActorsTab extends ConsumerWidget {
           Icon(
             icon,
             size: 64,
-            color: AppTheme.accentColor.withValues(alpha: 0.3),
+            color: AppTheme.accentColor.withValues(alpha:0.3),
           ),
           const SizedBox(height: 16),
           Text(
             message,
             style: TextStyle(
-              color: AppTheme.textSecondary.withValues(alpha: 0.5),
+              color: AppTheme.textSecondary.withValues(alpha:0.5),
               fontSize: 16,
             ),
           ),
@@ -498,13 +483,13 @@ class _FavoriteCategoriesTab extends ConsumerWidget {
           Icon(
             icon,
             size: 64,
-            color: AppTheme.accentColor.withValues(alpha: 0.3),
+            color: AppTheme.accentColor.withValues(alpha:0.3),
           ),
           const SizedBox(height: 16),
           Text(
             message,
             style: TextStyle(
-              color: AppTheme.textSecondary.withValues(alpha: 0.5),
+              color: AppTheme.textSecondary.withValues(alpha:0.5),
               fontSize: 16,
             ),
           ),
@@ -528,7 +513,7 @@ class _FavoriteCategoriesTab extends ConsumerWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
-            color: AppTheme.accentColor.withValues(alpha: 0.15),
+            color: AppTheme.accentColor.withValues(alpha:0.15),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
@@ -579,10 +564,10 @@ class _CategoryChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: typeColor.withValues(alpha: 0.15),
+          color: typeColor.withValues(alpha:0.15),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: typeColor.withValues(alpha: 0.3),
+            color: typeColor.withValues(alpha:0.3),
           ),
         ),
         child: Row(
@@ -599,7 +584,7 @@ class _CategoryChip extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: typeColor.withValues(alpha: 0.2),
+                color: typeColor.withValues(alpha:0.2),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
@@ -636,7 +621,7 @@ class _ActorCardState extends State<_ActorCard>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 200),
+      duration: GlassConstants.animFast,
       vsync: this,
     );
     _scaleAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
@@ -668,22 +653,26 @@ class _ActorCardState extends State<_ActorCard>
           child: Column(
             children: [
               Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _scaleAnimation.value > 1.0
-                            ? AppTheme.accentColor.withValues(alpha: 0.3)
-                            : Colors.black.withValues(alpha: 0.2),
-                        blurRadius: _scaleAnimation.value > 1.0 ? 20 : 10,
-                        offset: const Offset(0, 5),
+                child: Center(
+                  child: AspectRatio(
+                    aspectRatio: 1,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: _scaleAnimation.value > 1.0
+                                ? AppTheme.accentColor.withValues(alpha:0.4)
+                                : Colors.black.withValues(alpha:0.2),
+                            blurRadius: _scaleAnimation.value > 1.0 ? 20 : 10,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: _buildAvatar(),
+                      child: ClipOval(
+                        child: _buildAvatar(),
+                      ),
+                    ),
                   ),
                 ),
               ),

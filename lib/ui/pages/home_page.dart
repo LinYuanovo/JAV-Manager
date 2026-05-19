@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'dart:io';
 import 'dart:async';
 import 'dart:math';
@@ -183,36 +184,47 @@ class _HomePageState extends ConsumerState<HomePage> with WindowListener {
           windowManager.maximize();
         }
       },
-      child: Container(
-        height: 40,
-        decoration: BoxDecoration(
-          color: AppTheme.surfaceColor.withValues(alpha: 0.8),
-          border: Border(
-            bottom: BorderSide(
-              color: Colors.white.withValues(alpha: 0.05),
-            ),
+      child: ClipRRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: GlassConstants.blurMedium,
+            sigmaY: GlassConstants.blurMedium,
           ),
-        ),
-        child: Row(
-          children: [
-            const SizedBox(width: 16),
-            const Icon(
-              Icons.video_library_rounded,
-              color: AppTheme.primaryColor,
-              size: 20,
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              'JAV Manager',
-              style: TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+          child: Container(
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha:0.7),
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.white.withValues(alpha:0.3),
+                ),
               ),
             ),
-            const Spacer(),
-            _buildWindowButtons(),
-          ],
+            child: Row(
+              children: [
+                const SizedBox(width: 16),
+                const Icon(
+                  Icons.video_library_rounded,
+                  color: AppTheme.primaryColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                ShaderMask(
+                  shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+                  child: const Text(
+                    'JAV Manager',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                _buildWindowButtons(),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -257,73 +269,81 @@ class _HomePageState extends ConsumerState<HomePage> with WindowListener {
             _isSidebarExpanded = _sidebarWidth > 100;
           });
         },
-        child: Container(
-          width: _sidebarWidth,
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceColor.withValues(alpha: 0.4),
-            border: Border(
-              right: BorderSide(
-                color: Colors.white.withValues(alpha: 0.05),
+        child: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(
+              sigmaX: GlassConstants.blurMedium,
+              sigmaY: GlassConstants.blurMedium,
+            ),
+            child: Container(
+              width: _sidebarWidth,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha:0.4),
+                border: Border(
+                  right: BorderSide(
+                    color: Colors.white.withValues(alpha:0.2),
+                  ),
+                ),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 16),
+                  _buildNavItem(
+                    index: 0,
+                    icon: Icons.movie_outlined,
+                    selectedIcon: Icons.movie,
+                    label: '媒体',
+                    selectedIndex: selectedIndex,
+                    count: _mediaCount,
+                    fontSize: fontSize,
+                  ),
+                  _buildNavItem(
+                    index: 1,
+                    icon: Icons.people_outline,
+                    selectedIcon: Icons.people,
+                    label: '演员',
+                    selectedIndex: selectedIndex,
+                    count: _actorCount,
+                    fontSize: fontSize,
+                  ),
+                  _buildNavItem(
+                    index: 2,
+                    icon: Icons.category_outlined,
+                    selectedIcon: Icons.category,
+                    label: '分类',
+                    selectedIndex: selectedIndex,
+                    fontSize: fontSize,
+                  ),
+                  _buildNavItem(
+                    index: 3,
+                    icon: Icons.favorite_outline,
+                    selectedIcon: Icons.favorite,
+                    label: '收藏',
+                    selectedIndex: selectedIndex,
+                    fontSize: fontSize,
+                  ),
+                  _buildNavItem(
+                    index: 4,
+                    icon: Icons.visibility_outlined,
+                    selectedIcon: Icons.visibility,
+                    label: '已看',
+                    selectedIndex: selectedIndex,
+                    count: _watchedCount,
+                    fontSize: fontSize,
+                  ),
+                  const Spacer(),
+                  _buildNavItem(
+                    index: 5,
+                    icon: Icons.settings_outlined,
+                    selectedIcon: Icons.settings,
+                    label: '设置',
+                    selectedIndex: selectedIndex,
+                    fontSize: fontSize,
+                  ),
+                  const SizedBox(height: 16),
+                ],
               ),
             ),
-          ),
-          child: Column(
-            children: [
-              const SizedBox(height: 16),
-              _buildNavItem(
-                index: 0,
-                icon: Icons.movie_outlined,
-                selectedIcon: Icons.movie,
-                label: '媒体',
-                selectedIndex: selectedIndex,
-                count: _mediaCount,
-                fontSize: fontSize,
-              ),
-              _buildNavItem(
-                index: 1,
-                icon: Icons.people_outline,
-                selectedIcon: Icons.people,
-                label: '演员',
-                selectedIndex: selectedIndex,
-                count: _actorCount,
-                fontSize: fontSize,
-              ),
-              _buildNavItem(
-                index: 2,
-                icon: Icons.category_outlined,
-                selectedIcon: Icons.category,
-                label: '分类',
-                selectedIndex: selectedIndex,
-                fontSize: fontSize,
-              ),
-              _buildNavItem(
-                index: 3,
-                icon: Icons.favorite_outline,
-                selectedIcon: Icons.favorite,
-                label: '收藏',
-                selectedIndex: selectedIndex,
-                fontSize: fontSize,
-              ),
-              _buildNavItem(
-                index: 4,
-                icon: Icons.visibility_outlined,
-                selectedIcon: Icons.visibility,
-                label: '已看',
-                selectedIndex: selectedIndex,
-                count: _watchedCount,
-                fontSize: fontSize,
-              ),
-              const Spacer(),
-              _buildNavItem(
-                index: 5,
-                icon: Icons.settings_outlined,
-                selectedIcon: Icons.settings,
-                label: '设置',
-                selectedIndex: selectedIndex,
-                fontSize: fontSize,
-              ),
-              const SizedBox(height: 16),
-            ],
           ),
         ),
       ),
@@ -345,27 +365,33 @@ class _HomePageState extends ConsumerState<HomePage> with WindowListener {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(GlassConstants.radiusMedium),
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(GlassConstants.radiusMedium),
           onTap: () {
             ref.read(selectedNavIndexProvider.notifier).state = index;
           },
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
+            duration: GlassConstants.animFast,
+            curve: GlassConstants.animCurve,
             padding: EdgeInsets.symmetric(
               horizontal: _isSidebarExpanded ? 16 : 0,
               vertical: 12,
             ),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: isSelected
-                  ? AppTheme.primaryColor.withValues(alpha: 0.15)
-                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(GlassConstants.radiusMedium),
+              gradient: isSelected
+                  ? LinearGradient(
+                      colors: [
+                        AppTheme.primaryColor.withValues(alpha:0.15),
+                        AppTheme.secondaryColor.withValues(alpha:0.15),
+                      ],
+                    )
+                  : null,
+              color: isSelected ? null : Colors.transparent,
               border: Border.all(
                 color: isSelected
-                    ? AppTheme.primaryColor.withValues(alpha: 0.3)
+                    ? AppTheme.primaryColor.withValues(alpha:0.3)
                     : Colors.transparent,
               ),
             ),
@@ -400,7 +426,15 @@ class _HomePageState extends ConsumerState<HomePage> with WindowListener {
                     margin: const EdgeInsets.only(left: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: isSelected ? AppTheme.primaryColor : AppTheme.textSecondary.withValues(alpha: 0.2),
+                      gradient: isSelected
+                          ? LinearGradient(
+                              colors: [
+                                AppTheme.primaryColor.withValues(alpha:0.8),
+                                AppTheme.secondaryColor.withValues(alpha:0.8),
+                              ],
+                            )
+                          : null,
+                      color: isSelected ? null : AppTheme.textSecondary.withValues(alpha:0.2),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     constraints: const BoxConstraints(minWidth: 20, minHeight: 18),
@@ -468,13 +502,13 @@ class _WindowButtonState extends State<_WindowButton> {
       child: GestureDetector(
         onTap: widget.onPressed,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
+          duration: GlassConstants.animFast,
           width: 46,
           height: 40,
           color: _isHovered
               ? (widget.isClose
-                  ? Colors.red.withValues(alpha: 0.8)
-                  : Colors.white.withValues(alpha: 0.1))
+                  ? AppTheme.accentColor.withValues(alpha:0.8)
+                  : Colors.white.withValues(alpha:0.15))
               : Colors.transparent,
           child: Icon(
             widget.icon,
@@ -514,6 +548,7 @@ class VideoGrid extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final fontSize = ref.watch(fontSizeProvider);
+    final enableAnimation = ref.watch(enableGridAnimationProvider);
 
     if (videos.isEmpty) {
       return Center(
@@ -523,13 +558,13 @@ class VideoGrid extends ConsumerWidget {
             Icon(
               Icons.video_library_outlined,
               size: 64,
-              color: AppTheme.textSecondary.withValues(alpha: 0.5),
+              color: AppTheme.textSecondary.withValues(alpha:0.5),
             ),
             const SizedBox(height: 16),
             Text(
               '暂无视频',
               style: TextStyle(
-                color: AppTheme.textSecondary.withValues(alpha: 0.5),
+                color: AppTheme.textSecondary.withValues(alpha:0.5),
                 fontSize: 16,
               ),
             ),
@@ -551,7 +586,7 @@ class VideoGrid extends ConsumerWidget {
           case ViewMode.list:
             return _buildListView(fontSize);
           default:
-            return _buildGridView(crossAxisCount, fontSize);
+            return _buildGridView(crossAxisCount, fontSize, enableAnimation);
         }
       },
     );
@@ -569,29 +604,29 @@ class VideoGrid extends ConsumerWidget {
 
     switch (mode) {
       case ViewMode.poster:
-        return (width / 180).floor().clamp(2, 10);
+        return (width / 180).floor().clamp(2, 7);   // max 7 columns
       case ViewMode.posterWithTitle:
-        return (width / 200).floor().clamp(2, 8);
+        return (width / 200).floor().clamp(2, 6);     // max 6 columns
       case ViewMode.posterWall:
-        return (width / 300).floor().clamp(1, 3);  // 改回300px宽，最多4列
+        return (width / 300).floor().clamp(1, 3);     // max 3 columns
       default:
         return 4;
     }
   }
 
-  Widget _buildGridView(int crossAxisCount, double fontSize) {
+  Widget _buildGridView(int crossAxisCount, double fontSize, bool enableAnimation) {
     final ratio = viewMode == ViewMode.posterWall ? 1.5 : 0.7;
     return GridView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(GlassConstants.spacingMedium),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
         childAspectRatio: ratio,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
+        crossAxisSpacing: GlassConstants.spacingMedium,
+        mainAxisSpacing: GlassConstants.spacingMedium,
       ),
       itemCount: videos.length,
       itemBuilder: (context, index) {
-        return _VideoCard(
+        final card = _VideoCard(
           video: videos[index],
           viewMode: viewMode,
           onTap: onVideoTap,
@@ -599,6 +634,11 @@ class VideoGrid extends ConsumerWidget {
           onSecondaryTap: onVideoSecondaryTap,
           onFavoriteToggle: onFavoriteToggle,
           fontSize: fontSize,
+        );
+        if (!enableAnimation) return card;
+        return StaggeredItem(
+          index: index,
+          child: card,
         );
       },
     );
@@ -723,7 +763,7 @@ class _VideoCardState extends State<_VideoCard>
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.7),
+                      color: AppTheme.successColor.withValues(alpha:0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -800,8 +840,8 @@ class _VideoCardState extends State<_VideoCard>
                     child: const Center(child: Icon(Icons.movie, size: 32, color: AppTheme.textSecondary)),
                   ),
                 Positioned(
-                  top: 6,
-                  right: 6,
+                  top: 8,
+                  right: 12,
                   child: _buildFavoriteButton(),
                 ),
                 if (widget.video.isWatched || widget.video.watchCount > 0)
@@ -811,7 +851,7 @@ class _VideoCardState extends State<_VideoCard>
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.7),
+                        color: AppTheme.successColor.withValues(alpha:0.15),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Row(
@@ -845,19 +885,19 @@ class _VideoCardState extends State<_VideoCard>
   Widget _buildPoster(bool showTitle) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(GlassConstants.radiusLarge),
         boxShadow: [
           BoxShadow(
             color: _isHovered
-                ? AppTheme.primaryColor.withValues(alpha: 0.2)
-                : Colors.black.withValues(alpha: 0.2),
+                ? AppTheme.primaryColor.withValues(alpha:0.2)
+                : Colors.black.withValues(alpha:0.2),
             blurRadius: _isHovered ? 20 : 10,
             offset: const Offset(0, 5),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(GlassConstants.radiusLarge),
         child: widget.video.posterPath != null
             ? Image.file(
                 File(widget.video.posterPath!),
@@ -885,7 +925,7 @@ class _VideoCardState extends State<_VideoCard>
       child: Container(
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.5),
+          color: Colors.white.withValues(alpha:0.8),
           shape: BoxShape.circle,
         ),
         child: Icon(
@@ -895,7 +935,7 @@ class _VideoCardState extends State<_VideoCard>
           size: 18,
           color: widget.video.isFavorite
               ? AppTheme.accentColor
-              : Colors.white,
+              : Colors.white.withValues(alpha:0.9),
         ),
       ),
     );
@@ -933,8 +973,8 @@ class _VideoListItem extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: SizedBox(
-                width: 240,
-                height: 135,
+                width: 360,
+                height: 202,
                 child: video.fanartPath != null
                     ? Image.file(
                         File(video.fanartPath!),
@@ -987,7 +1027,7 @@ class _VideoListItem extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: AppTheme.successColor.withValues(alpha: 0.1),
+                color: AppTheme.successColor.withValues(alpha:0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
