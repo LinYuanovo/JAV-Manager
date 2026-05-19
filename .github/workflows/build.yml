@@ -9,6 +9,9 @@ on:
       - '.gitignore'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -16,6 +19,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Set up Flutter
       uses: subosito/flutter-action@v2
@@ -46,27 +51,33 @@ jobs:
       shell: bash
       run: |
         cd build/windows/x64/runner/Release
-        7z a -tzip ../../../JAV-Manager-${{ steps.get_version.outputs.VERSION }}.zip .
+        7z a -tzip "${GITHUB_WORKSPACE}/JAV-Manager-${{ steps.get_version.outputs.VERSION }}.zip" .
+
+    - name: Verify archive exists
+      shell: bash
+      run: |
+        ls -lh "${GITHUB_WORKSPACE}/JAV-Manager-${{ steps.get_version.outputs.VERSION }}.zip"
 
     - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ steps.get_version.outputs.VERSION }}
         name: JAV-Manager v${{ steps.get_version.outputs.VERSION }}
         body: |
           ## JAV-Manager v${{ steps.get_version.outputs.VERSION }}
-          
+
           ### 📦 下载说明
           - 下载 `JAV-Manager-${{ steps.get_version.outputs.VERSION }}.zip`
           - 解压到任意目录
           - 运行 `JAV-Manager.exe`
-          
+
           ### ✨ 更新内容
           查看完整更新日志请访问 [CHANGELOG.md](https://github.com/LinYuanovo/JAV-Manager/blob/main/CHANGELOG.md)
         files: |
-          build/JAV-Manager-${{ steps.get_version.outputs.VERSION }}.zip
+          ${{ github.workspace }}/JAV-Manager-${{ steps.get_version.outputs.VERSION }}.zip
         draft: false
         prerelease: false
+        fail_on_unmatched_files: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

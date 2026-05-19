@@ -181,4 +181,4 @@ JAV-Manager/
 - [Riverpod](https://riverpod.dev) - 强大的状态管理方案
 - [gfriends](https://github.com/gfriends/gfriends) - 演员头像资源仓库
 - [JavSP](https://github.com/Yuukiy/JavSP) - 元数据刮削器
-- [Trae](https://www.trae.cn/) - AI开发
+- [Trae](https://www.trae.cn/) - AI IDE
