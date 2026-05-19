@@ -177,21 +177,18 @@ class AppTheme {
       ),
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
-          foregroundColor: textSecondary,
-          opacity: 0.7,
+          foregroundColor: textSecondary.withValues(alpha: 0.7),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: primaryColor,
-          opacity: 0.7,
+          foregroundColor: primaryColor.withValues(alpha: 0.7),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: primaryColor,
+          foregroundColor: primaryColor.withValues(alpha: 0.7),
           side: BorderSide(color: primaryColor.withValues(alpha: 0.7)),
-          opacity: 0.7,
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
