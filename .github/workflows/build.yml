@@ -34,9 +34,6 @@ jobs:
     - name: Get dependencies
       run: flutter pub get
 
-    - name: Ensure Windows platform files exist
-      run: flutter create --platforms=windows . --org com.example
-
     - name: Build Windows app
       run: flutter build windows --release
 

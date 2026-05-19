@@ -254,12 +254,25 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
                   ),
                 ),
                 const SizedBox(height: 24),
-                Text(
-                  _actor.name,
-                  style: const TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                GestureDetector(
+                  onDoubleTap: () {
+                    Clipboard.setData(ClipboardData(text: _actor.name));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('已复制: ${_actor.name}'),
+                        duration: const Duration(seconds: 1),
+                        behavior: SnackBarBehavior.floating,
+                        width: 300,
+                      ),
+                    );
+                  },
+                  child: Text(
+                    _actor.name,
+                    style: const TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),

@@ -190,17 +190,31 @@ class _VideoDetailDialogState extends ConsumerState<VideoDetailDialog>
                     ],
                   ),
                   const SizedBox(height: 8),
-                  ShaderMask(
-                    shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
-                    child: Text(
-                      widget.video.title ?? '未知标题',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
+                  GestureDetector(
+                    onDoubleTap: () {
+                      final title = widget.video.title ?? '未知标题';
+                      Clipboard.setData(ClipboardData(text: title));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('已复制: $title'),
+                          duration: const Duration(seconds: 1),
+                          behavior: SnackBarBehavior.floating,
+                          width: 300,
+                        ),
+                      );
+                    },
+                    child: ShaderMask(
+                      shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
+                      child: Text(
+                        widget.video.title ?? '未知标题',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: null,
+                        overflow: TextOverflow.visible,
                       ),
-                      maxLines: null,
-                      overflow: TextOverflow.visible,
                     ),
                   ),
                   if (widget.video.plot != null && widget.video.plot!.isNotEmpty) ...[

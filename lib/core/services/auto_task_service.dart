@@ -140,14 +140,19 @@ class AutoTaskService {
         for (final video in watchedVideos) {
           if (video.id != null && movedVideoIds.contains(video.id!)) {
             try {
+              final actorDirName = path.basename(path.dirname(video.folderPath));
+              final episodeDirName = path.basename(video.folderPath);
+              final newFolderPath = path.join(watchedFolder!, actorDirName, episodeDirName);
               await _videoRepository.updateVideo(video.copyWith(
                 isWatched: true,
-                filePath: path.join(
-                  watchedFolder!,
-                  path.basename(path.dirname(video.folderPath)),
-                  path.basename(video.folderPath),
-                  path.basename(video.filePath),
-                ),
+                folderPath: newFolderPath,
+                filePath: path.join(newFolderPath, path.basename(video.filePath)),
+                posterPath: video.posterPath != null
+                    ? path.join(newFolderPath, path.basename(video.posterPath!))
+                    : null,
+                fanartPath: video.fanartPath != null
+                    ? path.join(newFolderPath, path.basename(video.fanartPath!))
+                    : null,
               ));
               if (kDebugMode) debugPrint('[AutoMove] Marked video ID ${video.id} as watched');
             } catch (updateError) {
