@@ -58,3 +58,8 @@ windows/runner/Resources/
 *.avi
 *.srt
 *.ass
+
+# Privacy & Local Config
+.claude/
+.metadata
+*.iml
