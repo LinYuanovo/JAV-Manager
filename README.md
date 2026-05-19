@@ -57,100 +57,42 @@
 
 ## 📁 项目结构
 
+<details>
+<summary>📂 点击展开查看完整目录结构</summary>
+
 ```
 JAV-Manager/
 ├── lib/                          # 应用源代码
-│   ├── main.dart                 # 应用入口，初始化窗口和数据库
-│   │
+│   ├── main.dart                 # 应用入口
 │   ├── core/                     # 核心业务逻辑
-│   │   ├── database/
-│   │   │   └── database_helper.dart      # SQLite 数据库助手（建表、CRUD）
-│   │   │
-│   │   ├── models/
-│   │   │   └── models.dart               # 数据模型定义
-│   │   │       ├── Video                 # 视频模型（标题、路径、演员、收藏等）
-│   │   │       ├── Actor                 # 演员模型（姓名、头像、生日等）
-│   │   │       └── Category              # 分类模型（标签、系列、片商）
-│   │   │
-│   │   ├── providers/
-│   │   │   └── providers.dart            # Riverpod 状态管理
-│   │   │       ├── allVideosProvider     # 所有视频数据（过滤已观看）
-│   │   │       ├── allActorsProvider     # 所有演员数据
-│   │   │       ├── favoritesProvider     # 收藏数据
-│   │   │       └── settingsProvider      # 设置项（字体大小、排序偏好等）
-│   │   │
-│   │   ├── repositories/        # 数据访问层
-│   │   │   ├── video_repository.dart     # 视频数据 CRUD 操作
-│   │   │   ├── actor_repository.dart     # 演员数据 CRUD 操作
-│   │   │   └── category_repository.dart  # 分类数据 CRUD 操作
-│   │   │
-│   │   ├── services/             # 业务服务
-│   │   │   ├── media_scanner_service.dart    # 媒体扫描（解析 NFO、提取元数据）
-│   │   │   ├── auto_task_service.dart        # 自动任务（定时整理已观看视频）
-│   │   │   ├── avatar_service.dart           # 头像获取（gfriends 仓库）
-│   │   │   └── wikipedia_service.dart        # Wikipedia 信息解析
-│   │   │
+│   │   ├── database/             # 数据库层
+│   │   ├── models/               # 数据模型 (Video, Actor, Category)
+│   │   ├── providers/            # Riverpod 状态管理
+│   │   ├── repositories/         # 数据访问层
+│   │   ├── services/             # 业务服务 (扫描、整理、头像获取)
 │   │   └── utils/                # 工具类
-│   │       ├── performance_monitor.dart      # 性能监控
-│   │       └── proxy_client.dart             # HTTP 代理客户端
-│   │
-│   └── ui/                      # 用户界面
-│       ├── theme/
-│       │   └── app_theme.dart           # 主题配置（玻璃拟态组件）
-│       │       ├── GlassContainer         # 玻璃容器
-│       │       ├── GlassCard              # 玻璃卡片
-│       │       ├── GlassButton            # 玻璃按钮
-│       │       ├── GlassAppBar            # 毛玻璃导航栏
-│       │       ├── GlassSearchBar         # 搜索栏
-│       │       └── GradientBackground     # 渐变背景
-│       │
-│       └── pages/
-│           ├── home_page.dart             # 主页（侧边栏导航 + 内容区）
-│           │
-│           ├── media/                     # 媒体模块
-│           │   ├── media_page.dart        # 媒体列表页（网格/列表视图）
-│           │   └── video_detail_dialog.dart  # 视频详情弹窗
-│           │
-│           ├── actors/                    # 演员模块
-│           │   ├── actors_page.dart       # 演员列表页（头像网格）
-│           │   └── actor_detail_page.dart # 演员详情页（作品列表、信息展示）
-│           │
-│           ├── categories/                # 分类模块
-│           │   ├── categories_page.dart   # 分类浏览页（标签/系列/片商）
-│           │   └── category_videos_page.dart  # 分类下的视频列表
-│           │
-│           ├── favorites/
-│           │   └── favorites_page.dart    # 收藏页面（视频/演员 Tab 切换）
-│           │
-│           ├── watched/
-│           │   └── watched_page.dart      # 已观看视频列表
-│           │
-│           ├── settings/
-│           │   └── settings_page.dart     # 设置中心（路径、字体、代理配置）
-│           │
-│           └── test_page.dart            # 测试页面（开发调试用）
-│
-├── windows/                      # Windows 平台特定代码
-│   └── runner/                   # 运行时资源
-│       └── resources/
-│           └── app_icon.ico     # 应用图标
-│
+│   └── ui/                       # 用户界面
+│       ├── theme/                # 主题配置 (玻璃拟态组件)
+│       └── pages/                # 页面模块
+│           ├── home_page.dart    # 主页
+│           ├── media/            # 媒体页面
+│           ├── actors/           # 演员页面
+│           ├── categories/       # 分类页面
+│           ├── favorites/        # 收藏页面
+│           ├── watched/          # 已观看页面
+│           └── settings/         # 设置页面
+├── windows/                      # Windows 平台代码
 ├── fonts/                        # 自定义字体
-│   └── MapleMonoNL-NF-CN-Medium.ttf  # 等宽中文字体
-│
-├── prompt/                       # 项目文档和提示词
-│   ├── prompt.md                 # 项目需求说明
-│   └── ui-prompt.md              # UI 设计规范
-│
-├── .github/workflows/            # GitHub Actions
-│   └── build.yml                 # 自动构建和发布工作流
-│
-├── app_icon.png                  # 应用图标源文件
-├── CHANGELOG.md                  # 版本更新日志
-├── README.md                     # 项目说明文档
-├── pubspec.yaml                  # 项目配置和依赖
-└── pubspec.lock                  # 依赖版本锁定
+├── prompt/                       # 项目文档
+├── .github/workflows/            # CI/CD 配置
+├── app_icon.png                  # 应用图标
+├── CHANGELOG.md                  # 版本日志
+├── README.md                     # 说明文档
+├── pubspec.yaml                  # 项目配置
+└── pubspec.lock                  # 依赖锁定
 ```
+
+</details>
 
 ## 🚀 快速开始
 
@@ -238,5 +180,5 @@ JAV-Manager/
 - [Flutter Team](https://flutter.dev) - 优秀的跨平台框架
 - [Riverpod](https://riverpod.dev) - 强大的状态管理方案
 - [gfriends](https://github.com/gfriends/gfriends) - 演员头像资源仓库
-- [Wikipedia](https://www.wikipedia.org) - 演员公开信息来源
-
+- [JavSP](https://github.com/Yuukiy/JavSP) - 元数据刮削器
+- [Trae](https://www.trae.cn/) - AI开发

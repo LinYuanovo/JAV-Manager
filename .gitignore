@@ -29,8 +29,6 @@ flutter_*.png
 # Native
 *.cxx
 *.cmake
-*.h
-*.java
 *.o
 *.obj
 *.pdb
@@ -38,6 +36,10 @@ flutter_*.png
 *.png.h
 *.swift.h
 *.xcconfig
+
+# Windows headers (required for build)
+!windows/runner/*.h
+!windows/flutter/*.h
 
 # Platform
 android/app/src/main/java/com/example/jav_manager/
