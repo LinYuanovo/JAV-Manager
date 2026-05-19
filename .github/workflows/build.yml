@@ -35,7 +35,9 @@ jobs:
     - name: Get version from pubspec.yaml
       id: get_version
       shell: bash
-      run: echo "VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1)" >> $GITHUB_OUTPUT
+      run: |
+        VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1)
+        echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
 
     - name: Create Release Archive
       shell: bash
