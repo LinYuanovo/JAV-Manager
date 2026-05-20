@@ -1,4 +1,4 @@
-<h1 align="center"><img src="app_icon.png" alt="JAV-Manager" width="60" height="60"> &nbsp;JAV-Manager</h1>
+<h1 align="center"><img src="app_icon.png" alt="JAV-Manager" width="60" height="60" align="middle"> &nbsp;JAV-Manager</h1>
 
 <p align="center">
   <nobr>
@@ -22,12 +22,14 @@
 ### 环境要求
 
 <details>
-  <summary>点击展开查看环境要求</summary>
-  - **Flutter SDK**: >= 3.41.9
-  - **Dart SDK**: >= 3.11.5
-  - **操作系统**: Windows 10/11 (64位)
-  - **内存**: 建议 8GB+
-  - **磁盘空间**: 2GB+ (用于构建)
+<summary>点击展开查看环境要求</summary>
+
+- **Flutter SDK**: >= 3.41.9
+- **Dart SDK**: >= 3.11.5
+- **操作系统**: Windows 10/11 (64位)
+- **内存**: 建议 8GB+
+- **磁盘空间**: 2GB+ (用于构建)
+
 </details>
 
 ### 安装步骤
@@ -37,30 +39,30 @@
 Windows系统在[releases](https://github.com/LinYuanovo/JAV-Manager/releases)页面直接下载zip压缩包后**解压**即可使用
 
 #### 自行构建
+
 <details>
-  <summary>点击展开查看自行构建方式</summary>
-  1. **克隆仓库**
-   
-   ```bash
-   git clone https://github.com/LinYuanovo/JAV-Manager.git
-   cd JAV-Manager
-   ```
-  2. **安装依赖**
-    ```bash
-    flutter pub get
-    ```
-  3. **运行应用（开发模式）**
-    ```bash
-    flutter run -d windows
-    ```
-  4. **构建发布版本**
-    ```bash
-    flutter build windows --release
-    ```
-    可执行文件位于：
-    ```
-    build/windows/x64/runner/Release/jav_manager.exe
-    ```
+<summary>点击展开查看自行构建方式</summary>
+
+```bash
+# 克隆仓库
+git clone https://github.com/LinYuanovo/JAV-Manager.git
+cd JAV-Manager
+
+# 安装依赖
+flutter pub get
+
+# 运行应用（开发模式）
+flutter run -d windows
+
+# 构建发布版本
+flutter build windows --release
+```
+
+可执行文件位于：
+```
+build/windows/x64/runner/Release/jav_manager.exe
+```
+
 </details>
 
 ## 📂 媒体库目录结构
@@ -83,6 +85,9 @@ Windows系统在[releases](https://github.com/LinYuanovo/JAV-Manager/releases)�
 ```
 
 ### NFO 文件格式示例
+
+<details>
+<summary>点击展开查看NFO 文件格式示例</summary>
 
 应用通过解析 `movie.nfo` 文件提取视频元数据：
 
@@ -109,6 +114,8 @@ Windows系统在[releases](https://github.com/LinYuanovo/JAV-Manager/releases)�
 - `<set>` - 提取系列分类
 - `<studio>` - 提取片商分类
 - `<title>` - 显示标题
+
+</details>
 
 ## ✨ 功能特性
 
@@ -163,14 +170,14 @@ Windows系统在[releases](https://github.com/LinYuanovo/JAV-Manager/releases)�
 
 ## 🛠️ 技术栈
 
-| 技术                                                                      | 版本          | 用途                |
-| ----------------------------------------------------------------------- | ----------- | ----------------- |
-| [Flutter](https://flutter.dev)                                          | 3.41.9      | 跨平台 UI 框架         |
-| [Dart](https://dart.dev)                                                | 3.11.5      | 编程语言              |
-| [Riverpod](https://riverpod.dev)                                        | ^2.4.9      | 状态管理              |
-| [SQLite](https://www.sqlite.org)                                        | via sqflite | 本地数据存储            |
-| [window\_manager](https://pub.dev/packages/window_manager)              | ^0.3.7      | 窗口管理（尺寸、位置、状态持久化） |
-| [http](https://pub.dev/packages/http)                                    | ^1.1.0      | HTTP 客户端（代理支持）     |
+| 技术 | 版本 | 用途 |
+| --- | --- | --- |
+| [Flutter](https://flutter.dev) | 3.41.9 | 跨平台 UI 框架 |
+| [Dart](https://dart.dev) | 3.11.5 | 编程语言 |
+| [Riverpod](https://riverpod.dev) | ^2.4.9 | 状态管理 |
+| [SQLite](https://www.sqlite.org) | via sqflite | 本地数据存储 |
+| [window\_manager](https://pub.dev/packages/window_manager) | ^0.3.7 | 窗口管理（尺寸、位置、状态持久化） |
+| [http](https://pub.dev/packages/http) | ^1.1.0 | HTTP 客户端（代理支持） |
 
 ## 📁 项目结构
 
@@ -182,23 +189,16 @@ JAV-Manager/
 ├── lib/                          # 应用源代码
 │   ├── main.dart                 # 应用入口
 │   ├── core/                     # 核心业务逻辑
-│   │   ├── database/             # 数据库层 (Completer 安全初始化)
-│   │   ├── models/               # 数据模型 (Video, Actor, Category + copyWith null安全)
-│   │   ├── providers/            # Riverpod 状态管理 (枚举索引边界检查)
-│   │   ├── repositories/         # 数据访问层 (批量关联加载消除N+1)
-│   │   ├── services/             # 业务服务 (扫描、整理、头像获取、WebDAV)
-│   │   └── utils/                # 工具类 (AppSettings单例缓存, AppPaths路径, Debouncer)
+│   │   ├── database/             # 数据库层
+│   │   ├── models/               # 数据模型
+│   │   ├── providers/            # Riverpod 状态管理
+│   │   ├── repositories/         # 数据访问层
+│   │   ├── services/             # 业务服务
+│   │   └── utils/                # 工具类
 │   └── ui/                       # 用户界面
-│       ├── theme/                # 主题配置 (玻璃拟态组件 + LayoutConstants + 玻璃菜单主题)
-│       ├── widgets/              # 共享组件 (ActorAvatar, MosaicImage, EmptyStateWidget)
+│       ├── theme/                # 主题配置
+│       ├── widgets/              # 共享组件
 │       └── pages/                # 页面模块
-│           ├── home_page.dart    # 主页 (窗口图标动态切换)
-│           ├── media/            # 媒体页面
-│           ├── actors/           # 演员页面
-│           ├── categories/       # 分类页面 (Tab持久化)
-│           ├── favorites/        # 收藏页面 (Tab持久化)
-│           ├── watched/          # 已观看页面
-│           └── settings/         # 设置页面 (纯净模式开关)
 ├── windows/                      # Windows 平台代码
 ├── fonts/                        # 自定义字体
 ├── prompt/                       # 项目文档
