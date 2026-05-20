@@ -1,11 +1,4 @@
-<p align="center">
-  <table border="0" cellspacing="0" cellpadding="0">
-    <tr>
-      <td style="padding-right:8px"><img src="app_icon.png" alt="JAV-Manager" width="60" height="60"></td>
-      <td><b><font size="7">JAV-Manager</font></b></td>
-    </tr>
-  </table>
-</p>
+<h1 align="center"><img src="app_icon.png" alt="JAV-Manager" width="60" height="60" align="middle"> &nbsp;JAV-Manager</h1>
 
 <p align="center">
   <nobr>
