@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../database/database_helper.dart';
 import '../models/models.dart';
@@ -167,9 +168,6 @@ class ActorRepository {
   }
 
   String _mapToJson(Map<String, dynamic> map) {
-    final entries = map.entries
-        .map((e) => '"${e.key}":"${e.value}"')
-        .join(',');
-    return '{$entries}';
+    return jsonEncode(map);
   }
 }

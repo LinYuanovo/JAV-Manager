@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'core/utils/app_settings.dart';
 import 'core/providers/providers.dart';
 import 'ui/pages/home_page.dart';
 import 'ui/theme/app_theme.dart';
@@ -35,7 +35,7 @@ void main() async {
     });
   }
 
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = await AppSettings.load();
 
   runApp(
     ProviderScope(

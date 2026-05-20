@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/models/models.dart';
+import '../../../core/utils/app_settings.dart';
 import '../../theme/app_theme.dart';
 import '../home_page.dart';
 import '../actors/actor_detail_page.dart';
@@ -19,6 +20,7 @@ class MediaPage extends ConsumerStatefulWidget {
 class _MediaPageState extends ConsumerState<MediaPage> {
   final _searchController = TextEditingController();
   final _columnCountController = TextEditingController();
+  final _searchDebouncer = Debouncer();
   String _searchQuery = '';
   bool _isScanning = false;
   int _randomKey = 0;
@@ -34,6 +36,7 @@ class _MediaPageState extends ConsumerState<MediaPage> {
   void dispose() {
     _searchController.dispose();
     _columnCountController.dispose();
+    _searchDebouncer.dispose();
     super.dispose();
   }
 
@@ -115,7 +118,7 @@ class _MediaPageState extends ConsumerState<MediaPage> {
             child: GlassSearchBar(
               controller: _searchController,
               hintText: '搜索视频...',
-              onChanged: (value) => setState(() => _searchQuery = value),
+              onChanged: (value) => _searchDebouncer.run(() => setState(() => _searchQuery = value)),
             ),
           ),
           const SizedBox(width: GlassConstants.spacingMedium),
@@ -306,7 +309,7 @@ class _MediaPageState extends ConsumerState<MediaPage> {
   }
 
   void _showContextMenu(Video video, Offset position) {
-    showMenu(
+    AppTheme.showGlassMenu(
       context: context,
       position: RelativeRect.fromLTRB(position.dx, position.dy, position.dx + 1, position.dy + 1),
       items: [

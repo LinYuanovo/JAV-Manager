@@ -25,7 +25,19 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    final prefs = ref.read(sharedPreferencesProvider);
+    final initialIndex = prefs.getInt('favorites_last_tab') ?? 0;
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+      initialIndex: initialIndex.clamp(0, 2),
+    );
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        final prefs = ref.read(sharedPreferencesProvider);
+        prefs.setInt('favorites_last_tab', _tabController.index);
+      }
+    });
   }
 
   @override
@@ -61,8 +73,6 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
         children: [
-          const Icon(Icons.favorite, color: AppTheme.accentColor, size: 24),
-          const SizedBox(width: 12),
           ShaderMask(
             shaderCallback: (bounds) => AppTheme.accentGradient.createShader(bounds),
             child: const Text(
@@ -141,12 +151,22 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
   }
 }
 
-class _FavoriteVideosTab extends ConsumerWidget {
+class _FavoriteVideosTab extends ConsumerStatefulWidget {
   final String searchQuery;
   const _FavoriteVideosTab({this.searchQuery = ''});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_FavoriteVideosTab> createState() => _FavoriteVideosTabState();
+}
+
+class _FavoriteVideosTabState extends ConsumerState<_FavoriteVideosTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
     final videosAsync = ref.watch(favoriteVideosProvider);
     final viewMode = ref.watch(favoriteViewModeProvider);
     final sortMode = ref.watch(favoriteSortModeProvider);
@@ -154,18 +174,18 @@ class _FavoriteVideosTab extends ConsumerWidget {
     return videosAsync.when(
       data: (videos) {
         var filtered = videos;
-        if (searchQuery.isNotEmpty) {
+        if (widget.searchQuery.isNotEmpty) {
           filtered = videos.where((v) =>
-            (v.title ?? '').toLowerCase().contains(searchQuery.toLowerCase())
+            (v.title ?? '').toLowerCase().contains(widget.searchQuery.toLowerCase())
           ).toList();
         }
 
         filtered = sortVideos(filtered, sortMode, separateFavorites: true);
 
         if (filtered.isEmpty) {
-          return _buildEmptyState(
+          return EmptyStateWidget(
             icon: Icons.movie_outlined,
-            message: searchQuery.isNotEmpty ? '未找到匹配的影片' : '暂无收藏的影片',
+            message: widget.searchQuery.isNotEmpty ? '未找到匹配的影片' : '暂无收藏的影片',
           );
         }
 
@@ -241,29 +261,6 @@ class _FavoriteVideosTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyState({required IconData icon, required String message}) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: 64,
-            color: AppTheme.accentColor.withValues(alpha:0.3),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: TextStyle(
-              color: AppTheme.textSecondary.withValues(alpha:0.5),
-              fontSize: 16,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showVideoDetail(BuildContext context, Video video) {
     showDialog(
       context: context,
@@ -272,34 +269,50 @@ class _FavoriteVideosTab extends ConsumerWidget {
   }
 
   Future<void> _toggleFavorite(WidgetRef ref, Video video) async {
-    final repository = ref.read(videoRepositoryProvider);
-    await repository.toggleFavorite(video.id!, !video.isFavorite);
-    ref.invalidate(favoriteVideosProvider);
-    ref.invalidate(allVideosProvider);
+    try {
+      final repository = ref.read(videoRepositoryProvider);
+      await repository.toggleFavorite(video.id!, !video.isFavorite);
+      ref.invalidate(favoriteVideosProvider);
+      ref.invalidate(allVideosProvider);
+    } catch (e) {
+      if (mounted) {
+        showCopyToast(context, '操作失败: $e');
+      }
+    }
   }
 }
 
-class _FavoriteActorsTab extends ConsumerWidget {
+class _FavoriteActorsTab extends ConsumerStatefulWidget {
   final String searchQuery;
   const _FavoriteActorsTab({this.searchQuery = ''});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_FavoriteActorsTab> createState() => _FavoriteActorsTabState();
+}
+
+class _FavoriteActorsTabState extends ConsumerState<_FavoriteActorsTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
     final actorsAsync = ref.watch(favoriteActorsProvider);
 
     return actorsAsync.when(
       data: (actors) {
         var filtered = actors;
-        if (searchQuery.isNotEmpty) {
+        if (widget.searchQuery.isNotEmpty) {
           filtered = actors.where((a) =>
-            a.name.toLowerCase().contains(searchQuery.toLowerCase())
+            a.name.toLowerCase().contains(widget.searchQuery.toLowerCase())
           ).toList();
         }
 
         if (filtered.isEmpty) {
-          return _buildEmptyState(
+          return EmptyStateWidget(
             icon: Icons.people_outline,
-            message: searchQuery.isNotEmpty ? '未找到匹配的演员' : '暂无收藏的演员',
+            message: widget.searchQuery.isNotEmpty ? '未找到匹配的演员' : '暂无收藏的演员',
           );
         }
 
@@ -335,29 +348,6 @@ class _FavoriteActorsTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyState({required IconData icon, required String message}) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: 64,
-            color: AppTheme.accentColor.withValues(alpha:0.3),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: TextStyle(
-              color: AppTheme.textSecondary.withValues(alpha:0.5),
-              fontSize: 16,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showActorDetail(BuildContext context, Actor actor) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -367,27 +357,37 @@ class _FavoriteActorsTab extends ConsumerWidget {
   }
 }
 
-class _FavoriteCategoriesTab extends ConsumerWidget {
+class _FavoriteCategoriesTab extends ConsumerStatefulWidget {
   final String searchQuery;
   const _FavoriteCategoriesTab({this.searchQuery = ''});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_FavoriteCategoriesTab> createState() => _FavoriteCategoriesTabState();
+}
+
+class _FavoriteCategoriesTabState extends ConsumerState<_FavoriteCategoriesTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
     final categoriesAsync = ref.watch(favoriteCategoriesProvider);
 
     return categoriesAsync.when(
       data: (categories) {
         var filtered = categories;
-        if (searchQuery.isNotEmpty) {
+        if (widget.searchQuery.isNotEmpty) {
           filtered = categories.where((c) =>
-            c.name.toLowerCase().contains(searchQuery.toLowerCase())
+            c.name.toLowerCase().contains(widget.searchQuery.toLowerCase())
           ).toList();
         }
 
         if (filtered.isEmpty) {
-          return _buildEmptyState(
+          return EmptyStateWidget(
             icon: Icons.category_outlined,
-            message: searchQuery.isNotEmpty ? '未找到匹配的分类' : '暂无收藏的分类',
+            message: widget.searchQuery.isNotEmpty ? '未找到匹配的分类' : '暂无收藏的分类',
           );
         }
 
@@ -426,29 +426,6 @@ class _FavoriteCategoriesTab extends ConsumerWidget {
       ),
       error: (error, stack) => Center(
         child: Text('加载失败: $error', style: const TextStyle(color: AppTheme.errorColor)),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState({required IconData icon, required String message}) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: 64,
-            color: AppTheme.accentColor.withValues(alpha:0.3),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: TextStyle(
-              color: AppTheme.textSecondary.withValues(alpha:0.5),
-              fontSize: 16,
-            ),
-          ),
-        ],
       ),
     );
   }

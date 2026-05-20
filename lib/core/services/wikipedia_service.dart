@@ -15,29 +15,32 @@ class WikipediaService {
 
     try {
       final client = await createProxyClientFromPrefs();
-      final response = await client.get(
-        Uri.parse(url),
-        headers: {
-          'User-Agent': 'JAV-Manager/1.0 (https://github.com/gfriends/gfriends; contact@example.com)',
-        },
-      ).timeout(const Duration(seconds: 15));
-      client.close();
+      try {
+        final response = await client.get(
+          Uri.parse(url),
+          headers: {
+            'User-Agent': 'JAV-Manager/1.0 (https://github.com/gfriends/gfriends; contact@example.com)',
+          },
+        ).timeout(const Duration(seconds: 15));
 
-      if (kDebugMode) {
-        debugPrint('[Wikipedia] Response status: ${response.statusCode}');
-        debugPrint('[Wikipedia] Content length: ${response.body.length}');
-      }
+        if (kDebugMode) {
+          debugPrint('[Wikipedia] Response status: ${response.statusCode}');
+          debugPrint('[Wikipedia] Content length: ${response.body.length}');
+        }
 
-      if (response.statusCode != 200) {
-        if (kDebugMode) debugPrint('[Wikipedia] Non-200 status, returning null');
-        return null;
-      }
+        if (response.statusCode != 200) {
+          if (kDebugMode) debugPrint('[Wikipedia] Non-200 status, returning null');
+          return null;
+        }
 
-      final result = _parseWikipediaHtml(response.body);
-      if (kDebugMode) {
-        debugPrint('[Wikipedia] Parsed result: $result');
+        final result = _parseWikipediaHtml(response.body);
+        if (kDebugMode) {
+          debugPrint('[Wikipedia] Parsed result: $result');
+        }
+        return result;
+      } finally {
+        client.close();
       }
-      return result;
     } catch (e, stackTrace) {
       if (kDebugMode) {
         debugPrint('[Wikipedia] Error: $e');
@@ -230,16 +233,19 @@ class WikipediaService {
     try {
       final url = '$_baseUrl${Uri.encodeComponent(actorName)}';
       final client = await createProxyClientFromPrefs();
-      final response = await client.get(
-        Uri.parse(url),
-        headers: {
-          'User-Agent': 'JAV-Manager/1.0 (https://github.com/gfriends/gfriends; contact@example.com)',
-        },
-      ).timeout(const Duration(seconds: 15));
-      client.close();
+      try {
+        final response = await client.get(
+          Uri.parse(url),
+          headers: {
+            'User-Agent': 'JAV-Manager/1.0 (https://github.com/gfriends/gfriends; contact@example.com)',
+          },
+        ).timeout(const Duration(seconds: 15));
 
-      if (response.statusCode != 200) return null;
-      return _extractMainImage(response.body);
+        if (response.statusCode != 200) return null;
+        return _extractMainImage(response.body);
+      } finally {
+        client.close();
+      }
     } catch (e) {
       return null;
     }

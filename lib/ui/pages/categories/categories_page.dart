@@ -29,8 +29,20 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    _tabController.addListener(() => setState(() {}));
+    final prefs = ref.read(sharedPreferencesProvider);
+    final initialTabIndex = prefs.getInt('categories_last_tab') ?? 0;
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+      initialIndex: initialTabIndex.clamp(0, 2),
+    );
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {});
+        final prefs = ref.read(sharedPreferencesProvider);
+        prefs.setInt('categories_last_tab', _tabController.index);
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final prefs = ref.read(sharedPreferencesProvider);
       setState(() {
@@ -44,7 +56,22 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage>
         _sortField = CategorySortField.values[sortFieldIndex.clamp(0, CategorySortField.values.length - 1)];
         _sortOrder = CategorySortOrder.values[sortOrderIndex.clamp(0, CategorySortOrder.values.length - 1)];
       });
+      _cleanupOrphanedCategories();
     });
+  }
+
+  Future<void> _cleanupOrphanedCategories() async {
+    try {
+      final repository = ref.read(categoryRepositoryProvider);
+      final deleted = await repository.deleteOrphanedCategories();
+      if (deleted > 0) {
+        ref.invalidate(allTagsProvider);
+        ref.invalidate(allSeriesProvider);
+        ref.invalidate(allStudiosProvider);
+      }
+    } catch (e) {
+      debugPrint('清理孤立分类失败: $e');
+    }
   }
 
   @override
@@ -264,7 +291,7 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage>
   }
 }
 
-class _CategoryListView extends ConsumerWidget {
+class _CategoryListView extends ConsumerStatefulWidget {
   final FutureProvider<List<Category>> provider;
   final String searchQuery;
   final bool isFixedColumnCount;
@@ -282,20 +309,32 @@ class _CategoryListView extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final asyncValue = ref.watch(provider);
+  ConsumerState<_CategoryListView> createState() => _CategoryListViewState();
+}
+
+class _CategoryListViewState extends ConsumerState<_CategoryListView>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final asyncValue = ref.watch(widget.provider);
 
     return asyncValue.when(
       data: (categories) {
-        var filtered = searchQuery.isEmpty
+        var filtered = widget.searchQuery.isEmpty
             ? categories
-            : categories.where((c) => c.name.toLowerCase().contains(searchQuery.toLowerCase())).toList();
+            : categories.where((c) => c.name.toLowerCase().contains(widget.searchQuery.toLowerCase())).toList();
+
+        filtered = filtered.where((c) => c.hasVideos || c.isFavorite).toList();
 
         filtered = _applySort(filtered);
         return _CategoryGrid(
           categories: filtered,
-          isFixedColumnCount: isFixedColumnCount,
-          fixedColumnCount: fixedColumnCount,
+          isFixedColumnCount: widget.isFixedColumnCount,
+          fixedColumnCount: widget.fixedColumnCount,
         );
       },
       loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
@@ -314,7 +353,7 @@ class _CategoryListView extends ConsumerWidget {
     final nonFavorites = sorted.where((c) => !c.isFavorite).toList();
 
     void applyUserSort(List<Category> list) {
-      switch (sortField) {
+      switch (widget.sortField) {
         case CategorySortField.name:
           list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
           break;
@@ -322,7 +361,7 @@ class _CategoryListView extends ConsumerWidget {
           list.sort((a, b) => a.videoCount.compareTo(b.videoCount));
           break;
       }
-      if (sortOrder == CategorySortOrder.desc) {
+      if (widget.sortOrder == CategorySortOrder.desc) {
         final reversed = list.reversed.toList();
         list.clear();
         list.addAll(reversed);
@@ -350,15 +389,9 @@ class _CategoryGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (categories.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.category_outlined, size: 64, color: AppTheme.textSecondary.withValues(alpha:0.5)),
-            const SizedBox(height: 16),
-            Text('暂无分类', style: TextStyle(color: AppTheme.textSecondary.withValues(alpha:0.5), fontSize: 16)),
-          ],
-        ),
+      return const EmptyStateWidget(
+        icon: Icons.category_outlined,
+        message: '暂无分类',
       );
     }
 
@@ -482,13 +515,19 @@ class _CategoryCardState extends ConsumerState<_CategoryCard>
   }
 
   Future<void> _toggleFavorite() async {
-    final repository = ref.read(categoryRepositoryProvider);
-    await repository.toggleFavorite(widget.category.id!, !widget.category.isFavorite);
-    setState(() {});
-    ref.invalidate(allTagsProvider);
-    ref.invalidate(allSeriesProvider);
-    ref.invalidate(allStudiosProvider);
-    ref.invalidate(favoriteCategoriesProvider);
+    try {
+      final repository = ref.read(categoryRepositoryProvider);
+      await repository.toggleFavorite(widget.category.id!, !widget.category.isFavorite);
+      setState(() {});
+      ref.invalidate(allTagsProvider);
+      ref.invalidate(allSeriesProvider);
+      ref.invalidate(allStudiosProvider);
+      ref.invalidate(favoriteCategoriesProvider);
+    } catch (e) {
+      if (mounted) {
+        showCopyToast(context, '操作失败: $e');
+      }
+    }
   }
 
   String _getDisplayName() {

@@ -36,6 +36,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   double _fontSize = 14.0;
   bool _enableGridAnimation = true;
   bool _enableAutoMove = true;
+  bool _pureModeEnabled = false;
 
   @override
   void initState() {
@@ -67,6 +68,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _fontSize = fontSize;
     _enableGridAnimation = prefs.getBool('enable_grid_animation') ?? true;
     _enableAutoMove = prefs.getBool('enable_auto_move') ?? true;
+    _pureModeEnabled = prefs.getBool('pure_mode_enabled') ?? false;
   }
 
   @override
@@ -536,6 +538,28 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
           ],
         ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('纯净模式', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                  SizedBox(height: 4),
+                  Text('仅显示番号并隐藏海报内容', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                ],
+              ),
+            ),
+            Switch(
+              value: _pureModeEnabled,
+              onChanged: (value) {
+                setState(() => _pureModeEnabled = value);
+              },
+              activeThumbColor: AppTheme.primaryColor,
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -734,6 +758,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     await prefs.setDouble('font_size', _fontSize);
     await prefs.setBool('enable_grid_animation', _enableGridAnimation);
     await prefs.setBool('enable_auto_move', _enableAutoMove);
+    await prefs.setBool('pure_mode_enabled', _pureModeEnabled);
     await prefs.setString('webdav_url', _webdavUrlController.text);
     await prefs.setString('webdav_username', _webdavUsernameController.text);
     await prefs.setString('webdav_password', _webdavPasswordController.text);
@@ -742,6 +767,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     await autoTaskService.setScanInterval(interval);
 
     ref.invalidate(enableGridAnimationProvider);
+    ref.invalidate(pureModeProvider);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

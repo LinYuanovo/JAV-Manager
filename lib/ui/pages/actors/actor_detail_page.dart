@@ -7,6 +7,7 @@ import 'package:path/path.dart' as path;
 import '../../../core/models/models.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/utils/proxy_client.dart';
+import '../../../core/utils/app_paths.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/actor_avatar.dart';
 import '../home_page.dart';
@@ -194,7 +195,8 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
   }
 
   Widget _buildInfoPanel() {
-    return ClipRRect(
+    return RepaintBoundary(
+    child: ClipRRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(
           sigmaX: GlassConstants.blurMedium,
@@ -296,6 +298,7 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
           ),
         ),
       ),
+    ),
     );
   }
 
@@ -472,15 +475,9 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
           child: videosAsync.when(
             data: (videos) {
               if (videos.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.movie_outlined, size: 64, color: AppTheme.textSecondary.withValues(alpha:0.5)),
-                      const SizedBox(height: 16),
-                      Text('暂无出演作品', style: TextStyle(color: AppTheme.textSecondary.withValues(alpha:0.5), fontSize: 16)),
-                    ],
-                  ),
+                return const EmptyStateWidget(
+                  icon: Icons.movie_outlined,
+                  message: '暂无出演作品',
                 );
               }
               final sorted = sortVideos(videos, _sortMode, separateFavorites: true);
@@ -509,13 +506,19 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
   }
 
   Future<void> _toggleFavorite() async {
-    final repository = ref.read(actorRepositoryProvider);
-    await repository.toggleFavorite(_actor.id!, !_actor.isFavorite);
-    ref.invalidate(allActorsProvider);
-    ref.invalidate(favoriteActorsProvider);
-    setState(() {
-      _actor = _actor.copyWith(isFavorite: !_actor.isFavorite);
-    });
+    try {
+      final repository = ref.read(actorRepositoryProvider);
+      await repository.toggleFavorite(_actor.id!, !_actor.isFavorite);
+      ref.invalidate(allActorsProvider);
+      ref.invalidate(favoriteActorsProvider);
+      setState(() {
+        _actor = _actor.copyWith(isFavorite: !_actor.isFavorite);
+      });
+    } catch (e) {
+      if (mounted) {
+        showCopyToast(context, '操作失败: $e');
+      }
+    }
   }
 
   Future<void> _playVideo(Video video) async {
@@ -540,7 +543,7 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
   }
 
   void _showContextMenu(Video video, Offset position) {
-    showMenu(
+    AppTheme.showGlassMenu(
       context: context,
       position: RelativeRect.fromLTRB(position.dx, position.dy, position.dx + 1, position.dy + 1),
       items: [
@@ -568,11 +571,17 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
   }
 
   Future<void> _toggleVideoFavorite(Video video) async {
-    final repository = ref.read(videoRepositoryProvider);
-    await repository.toggleFavorite(video.id!, !video.isFavorite);
-    ref.invalidate(videosByActorProvider(_actor.id!));
-    ref.invalidate(allVideosProvider);
-    ref.invalidate(favoriteVideosProvider);
+    try {
+      final repository = ref.read(videoRepositoryProvider);
+      await repository.toggleFavorite(video.id!, !video.isFavorite);
+      ref.invalidate(videosByActorProvider(_actor.id!));
+      ref.invalidate(allVideosProvider);
+      ref.invalidate(favoriteVideosProvider);
+    } catch (e) {
+      if (mounted) {
+        showCopyToast(context, '操作失败: $e');
+      }
+    }
   }
 
   Future<void> _showAvatarSelectionDialog() async {
@@ -634,12 +643,7 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
 
   Future<void> _changeAvatar(String newUrl, BuildContext dialogContext) async {
     try {
-      final appDir = File(Platform.resolvedExecutable).parent.path;
-      final dirPath = path.join(appDir, 'jav_manager', 'avatars');
-      final dir = Directory(dirPath);
-      if (!await dir.exists()) {
-        await dir.create(recursive: true);
-      }
+      final avatarsDir = await AppPaths.avatarsDir;
 
       if (_actor.avatarUrl != null && _actor.avatarUrl!.isNotEmpty) {
         final oldFile = File(_actor.avatarUrl!);
@@ -654,7 +658,7 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
 
       if (response.statusCode == 200 && response.bodyBytes.length > 100) {
         final safeName = _actor.name.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
-        final filePath = path.join(dirPath, '$safeName.jpg');
+        final filePath = path.join(avatarsDir, '$safeName.jpg');
         await File(filePath).writeAsBytes(response.bodyBytes);
 
         // Clear image cache so Image.file re-decodes the new file

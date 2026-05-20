@@ -69,15 +69,9 @@ class _CategoryVideosPageState extends ConsumerState<CategoryVideosPage> {
             child: videosAsync.when(
               data: (videos) {
                 if (videos.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.movie_outlined, size: 64, color: AppTheme.textSecondary.withValues(alpha:0.5)),
-                        const SizedBox(height: 16),
-                        Text('该分类暂无影片', style: TextStyle(color: AppTheme.textSecondary.withValues(alpha:0.5), fontSize: 16)),
-                      ],
-                    ),
+                  return const EmptyStateWidget(
+                    icon: Icons.movie_outlined,
+                    message: '该分类暂无影片',
                   );
                 }
                 final sorted = sortVideos(videos, _sortMode, separateFavorites: true);
@@ -251,11 +245,17 @@ class _CategoryVideosPageState extends ConsumerState<CategoryVideosPage> {
   }
 
   Future<void> _toggleFavorite(Video video) async {
-    final repository = ref.read(videoRepositoryProvider);
-    await repository.toggleFavorite(video.id!, !video.isFavorite);
-    ref.invalidate(videosByCategoryProvider(widget.category.id!));
-    ref.invalidate(allVideosProvider);
-    ref.invalidate(favoriteVideosProvider);
+    try {
+      final repository = ref.read(videoRepositoryProvider);
+      await repository.toggleFavorite(video.id!, !video.isFavorite);
+      ref.invalidate(videosByCategoryProvider(widget.category.id!));
+      ref.invalidate(allVideosProvider);
+      ref.invalidate(favoriteVideosProvider);
+    } catch (e) {
+      if (mounted) {
+        showCopyToast(context, '操作失败: $e');
+      }
+    }
   }
 
   Future<void> _playVideo(Video video) async {
@@ -280,7 +280,7 @@ class _CategoryVideosPageState extends ConsumerState<CategoryVideosPage> {
   }
 
   void _showContextMenu(Video video, Offset position) {
-    showMenu(
+    AppTheme.showGlassMenu(
       context: context,
       position: RelativeRect.fromLTRB(position.dx, position.dy, position.dx + 1, position.dy + 1),
       items: [
@@ -316,16 +316,22 @@ class _CategoryVideosPageState extends ConsumerState<CategoryVideosPage> {
 
   Future<void> _toggleCategoryFavorite() async {
     final newFavoriteState = !_category.isFavorite;
-    final repository = ref.read(categoryRepositoryProvider);
-    await repository.toggleFavorite(_category.id!, newFavoriteState);
+    try {
+      final repository = ref.read(categoryRepositoryProvider);
+      await repository.toggleFavorite(_category.id!, newFavoriteState);
 
-    setState(() {
-      _category = _category.copyWith(isFavorite: newFavoriteState);
-    });
+      setState(() {
+        _category = _category.copyWith(isFavorite: newFavoriteState);
+      });
 
-    ref.invalidate(allTagsProvider);
-    ref.invalidate(allSeriesProvider);
-    ref.invalidate(allStudiosProvider);
-    ref.invalidate(favoriteCategoriesProvider);
+      ref.invalidate(allTagsProvider);
+      ref.invalidate(allSeriesProvider);
+      ref.invalidate(allStudiosProvider);
+      ref.invalidate(favoriteCategoriesProvider);
+    } catch (e) {
+      if (mounted) {
+        showCopyToast(context, '操作失败: $e');
+      }
+    }
   }
 }

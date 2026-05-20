@@ -5,18 +5,57 @@ import '../models/models.dart';
 class VideoRepository {
   Future<Database> get _db => DatabaseHelper.database;
 
+  Future<List<Video>> _fillVideoRelations(List<Video> videos) async {
+    if (videos.isEmpty) return videos;
+
+    final db = await _db;
+    final videoIds = videos.where((v) => v.id != null).map((v) => v.id!).toList();
+    if (videoIds.isEmpty) return videos;
+
+    final placeholders = List.filled(videoIds.length, '?').join(', ');
+
+    final actorMaps = await db.rawQuery('''
+      SELECT a.*, va.video_id FROM actors a
+      INNER JOIN video_actors va ON a.id = va.actor_id
+      WHERE va.video_id IN ($placeholders)
+    ''', videoIds);
+
+    final categoryMaps = await db.rawQuery('''
+      SELECT c.*, vc.video_id FROM categories c
+      INNER JOIN video_categories vc ON c.id = vc.category_id
+      WHERE vc.video_id IN ($placeholders)
+    ''', videoIds);
+
+    final actorsByVideoId = <int, List<Actor>>{};
+    for (final map in actorMaps) {
+      final videoId = map['video_id'] as int;
+      actorsByVideoId.putIfAbsent(videoId, () => []);
+      actorsByVideoId[videoId]!.add(Actor.fromMap(map));
+    }
+
+    final categoriesByVideoId = <int, List<Category>>{};
+    for (final map in categoryMaps) {
+      final videoId = map['video_id'] as int;
+      categoriesByVideoId.putIfAbsent(videoId, () => []);
+      categoriesByVideoId[videoId]!.add(Category.fromMap(map));
+    }
+
+    return videos.map((video) {
+      return video.copyWith(
+        actors: actorsByVideoId[video.id!] ?? [],
+        categories: categoriesByVideoId[video.id!] ?? [],
+      );
+    }).toList();
+  }
+
   Future<List<Video>> getAllVideos() async {
     final db = await _db;
     final List<Map<String, dynamic>> maps = await db.query(
       'videos',
       orderBy: 'title ASC',
     );
-    return Future.wait(maps.map((map) async {
-      final video = Video.fromMap(map);
-      final actors = await getVideoActors(video.id!);
-      final categories = await getVideoCategories(video.id!);
-      return video.copyWith(actors: actors, categories: categories);
-    }));
+    final videos = maps.map((map) => Video.fromMap(map)).toList();
+    return _fillVideoRelations(videos);
   }
 
   Future<List<Video>> getUnwatchedVideos() async {
@@ -26,12 +65,8 @@ class VideoRepository {
       where: 'is_watched = 0 AND watch_count = 0',
       orderBy: 'title ASC',
     );
-    return Future.wait(maps.map((map) async {
-      final video = Video.fromMap(map);
-      final actors = await getVideoActors(video.id!);
-      final categories = await getVideoCategories(video.id!);
-      return video.copyWith(actors: actors, categories: categories);
-    }));
+    final videos = maps.map((map) => Video.fromMap(map)).toList();
+    return _fillVideoRelations(videos);
   }
 
   Future<List<Video>> getVideosByFolder(String folderPath) async {
@@ -42,12 +77,8 @@ class VideoRepository {
       whereArgs: ['$folderPath%'],
       orderBy: 'title ASC',
     );
-    return Future.wait(maps.map((map) async {
-      final video = Video.fromMap(map);
-      final actors = await getVideoActors(video.id!);
-      final categories = await getVideoCategories(video.id!);
-      return video.copyWith(actors: actors, categories: categories);
-    }));
+    final videos = maps.map((map) => Video.fromMap(map)).toList();
+    return _fillVideoRelations(videos);
   }
 
   Future<List<Video>> getWatchedVideos() async {
@@ -57,12 +88,8 @@ class VideoRepository {
       where: 'is_watched = 1 OR watch_count > 0',
       orderBy: 'last_watched_time DESC',
     );
-    return Future.wait(maps.map((map) async {
-      final video = Video.fromMap(map);
-      final actors = await getVideoActors(video.id!);
-      final categories = await getVideoCategories(video.id!);
-      return video.copyWith(actors: actors, categories: categories);
-    }));
+    final videos = maps.map((map) => Video.fromMap(map)).toList();
+    return _fillVideoRelations(videos);
   }
 
   Future<List<Video>> getFavoriteVideos() async {
@@ -72,12 +99,8 @@ class VideoRepository {
       where: 'is_favorite = 1',
       orderBy: 'title ASC',
     );
-    return Future.wait(maps.map((map) async {
-      final video = Video.fromMap(map);
-      final actors = await getVideoActors(video.id!);
-      final categories = await getVideoCategories(video.id!);
-      return video.copyWith(actors: actors, categories: categories);
-    }));
+    final videos = maps.map((map) => Video.fromMap(map)).toList();
+    return _fillVideoRelations(videos);
   }
 
   Future<List<Video>> getVideosByActor(int actorId) async {
@@ -88,12 +111,8 @@ class VideoRepository {
       WHERE va.actor_id = ?
       ORDER BY v.title ASC
     ''', [actorId]);
-    return Future.wait(maps.map((map) async {
-      final video = Video.fromMap(map);
-      final actors = await getVideoActors(video.id!);
-      final categories = await getVideoCategories(video.id!);
-      return video.copyWith(actors: actors, categories: categories);
-    }));
+    final videos = maps.map((map) => Video.fromMap(map)).toList();
+    return _fillVideoRelations(videos);
   }
 
   Future<List<Video>> getVideosByCategory(int categoryId) async {
@@ -104,12 +123,8 @@ class VideoRepository {
       WHERE vc.category_id = ?
       ORDER BY v.title ASC
     ''', [categoryId]);
-    return Future.wait(maps.map((map) async {
-      final video = Video.fromMap(map);
-      final actors = await getVideoActors(video.id!);
-      final categories = await getVideoCategories(video.id!);
-      return video.copyWith(actors: actors, categories: categories);
-    }));
+    final videos = maps.map((map) => Video.fromMap(map)).toList();
+    return _fillVideoRelations(videos);
   }
 
   Future<List<Video>> getVideosByTag(String tag) async {
@@ -121,12 +136,8 @@ class VideoRepository {
       WHERE c.type = 'tag' AND c.name = ?
       ORDER BY v.title ASC
     ''', [tag]);
-    return Future.wait(maps.map((map) async {
-      final video = Video.fromMap(map);
-      final actors = await getVideoActors(video.id!);
-      final categories = await getVideoCategories(video.id!);
-      return video.copyWith(actors: actors, categories: categories);
-    }));
+    final videos = maps.map((map) => Video.fromMap(map)).toList();
+    return _fillVideoRelations(videos);
   }
 
   Future<List<Video>> getVideosBySeries(String series) async {
@@ -138,12 +149,8 @@ class VideoRepository {
       WHERE c.type = 'series' AND c.name = ?
       ORDER BY v.title ASC
     ''', [series]);
-    return Future.wait(maps.map((map) async {
-      final video = Video.fromMap(map);
-      final actors = await getVideoActors(video.id!);
-      final categories = await getVideoCategories(video.id!);
-      return video.copyWith(actors: actors, categories: categories);
-    }));
+    final videos = maps.map((map) => Video.fromMap(map)).toList();
+    return _fillVideoRelations(videos);
   }
 
   Future<List<Video>> getVideosByStudio(String studio) async {
@@ -155,12 +162,8 @@ class VideoRepository {
       WHERE c.type = 'studio' AND c.name = ?
       ORDER BY v.title ASC
     ''', [studio]);
-    return Future.wait(maps.map((map) async {
-      final video = Video.fromMap(map);
-      final actors = await getVideoActors(video.id!);
-      final categories = await getVideoCategories(video.id!);
-      return video.copyWith(actors: actors, categories: categories);
-    }));
+    final videos = maps.map((map) => Video.fromMap(map)).toList();
+    return _fillVideoRelations(videos);
   }
 
   Future<List<Video>> getRecentlyWatched({int limit = 20}) async {
@@ -171,12 +174,8 @@ class VideoRepository {
       orderBy: 'last_watched_time DESC',
       limit: limit,
     );
-    return Future.wait(maps.map((map) async {
-      final video = Video.fromMap(map);
-      final actors = await getVideoActors(video.id!);
-      final categories = await getVideoCategories(video.id!);
-      return video.copyWith(actors: actors, categories: categories);
-    }));
+    final videos = maps.map((map) => Video.fromMap(map)).toList();
+    return _fillVideoRelations(videos);
   }
 
   Future<List<Video>> searchVideos(String query) async {
@@ -187,12 +186,8 @@ class VideoRepository {
       whereArgs: ['%$query%'],
       orderBy: 'title ASC',
     );
-    return Future.wait(maps.map((map) async {
-      final video = Video.fromMap(map);
-      final actors = await getVideoActors(video.id!);
-      final categories = await getVideoCategories(video.id!);
-      return video.copyWith(actors: actors, categories: categories);
-    }));
+    final videos = maps.map((map) => Video.fromMap(map)).toList();
+    return _fillVideoRelations(videos);
   }
 
   Future<int> insertVideo(Video video) async {
@@ -354,11 +349,7 @@ class VideoRepository {
       'videos',
       where: 'watch_count > 0',
     );
-    return Future.wait(maps.map((map) async {
-      final video = Video.fromMap(map);
-      final actors = await getVideoActors(video.id!);
-      final categories = await getVideoCategories(video.id!);
-      return video.copyWith(actors: actors, categories: categories);
-    }));
+    final videos = maps.map((map) => Video.fromMap(map)).toList();
+    return _fillVideoRelations(videos);
   }
 }

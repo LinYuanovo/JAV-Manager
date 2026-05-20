@@ -1,33 +1,26 @@
-import 'dart:io';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:path/path.dart';
+import '../utils/app_paths.dart';
 
 class DatabaseHelper {
   static Database? _database;
-  static const String _databaseName = 'jav_manager.db';
+  static Future<Database>? _databaseFuture;
   static const int _databaseVersion = 2;
 
-  static Future<String> getAppDir() async {
-    return File(Platform.resolvedExecutable).parent.path;
-  }
+  /// Returns the root data directory where all app data is stored.
+  static Future<String> getDataDir() => AppPaths.rootDir;
 
-  static Future<String> getDatabasePath() async {
-    final appDir = await getAppDir();
-    return join(appDir, _databaseName);
-  }
+  static Future<String> getDatabasePath() => AppPaths.databaseFile;
 
   static Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDatabase();
-    return _database!;
+    return _databaseFuture ??= _initDatabase();
   }
 
   static Future<Database> _initDatabase() async {
-    final appDir = await getAppDir();
-    final path = join(appDir, _databaseName);
+    final dbPath = await getDatabasePath();
 
-    return await openDatabase(
-      path,
+    final db = await openDatabase(
+      dbPath,
       version: _databaseVersion,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
@@ -35,6 +28,8 @@ class DatabaseHelper {
         await db.execute('PRAGMA foreign_keys = ON');
       },
     );
+    _database = db;
+    return db;
   }
 
   static Future<void> _onCreate(Database db, int version) async {
@@ -132,6 +127,7 @@ class DatabaseHelper {
     if (db != null) {
       await db.close();
       _database = null;
+      _databaseFuture = null;
     }
   }
 }

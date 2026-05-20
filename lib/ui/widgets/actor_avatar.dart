@@ -13,6 +13,8 @@ class ActorAvatar extends StatelessWidget {
   final int? cacheWidth;
   final Key? imageKey;
 
+  static final Map<String, bool> _fileExistsCache = {};
+
   const ActorAvatar({
     super.key,
     required this.avatarUrl,
@@ -35,7 +37,7 @@ class ActorAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     if (avatarUrl != null && avatarUrl!.isNotEmpty) {
       final file = File(avatarUrl!);
-      if (file.existsSync()) {
+      if (_fileExistsCache[avatarUrl!] ??= File(avatarUrl!).existsSync()) {
         return SizedBox(
           width: width ?? double.infinity,
           height: height ?? double.infinity,

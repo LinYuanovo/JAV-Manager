@@ -1,18 +1,20 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 import 'package:path/path.dart' as path;
-import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/app_settings.dart';
 import '../repositories/video_repository.dart';
 import 'media_scanner_service.dart';
 
 class AutoTaskService {
   final VideoRepository _videoRepository;
   final MediaScannerService _mediaScannerService;
-  final SharedPreferences _prefs;
+  final AppSettings _prefs;
 
   Timer? _scanTimer;
   Timer? _moveTimer;
   bool _isRunning = false;
+  bool _isScanning = false;
+  bool _isMoving = false;
   final StreamController<int> _onAutoMoveCompleteController = StreamController<int>.broadcast();
 
   Stream<int> get onAutoMoveComplete => _onAutoMoveCompleteController.stream;
@@ -23,7 +25,7 @@ class AutoTaskService {
   static const String _keyScanInterval = 'scan_interval';
 
   AutoTaskService({
-    required SharedPreferences prefs,
+    required AppSettings prefs,
     VideoRepository? videoRepository,
     MediaScannerService? mediaScannerService,
   })  : _prefs = prefs,
@@ -63,12 +65,28 @@ class AutoTaskService {
 
     _scanTimer = Timer.periodic(
       Duration(minutes: scanIntervalMinutes),
-      (_) => _performScan(),
+      (_) async {
+        if (_isScanning) return;
+        _isScanning = true;
+        try {
+          await _performScan();
+        } finally {
+          _isScanning = false;
+        }
+      },
     );
 
     _moveTimer = Timer.periodic(
       Duration(minutes: scanIntervalMinutes),
-      (_) => _performAutoMove(),
+      (_) async {
+        if (_isMoving) return;
+        _isMoving = true;
+        try {
+          await _performAutoMove();
+        } finally {
+          _isMoving = false;
+        }
+      },
     );
   }
 

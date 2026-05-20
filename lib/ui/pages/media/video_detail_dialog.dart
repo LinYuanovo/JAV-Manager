@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/models.dart';
 import '../../../core/providers/providers.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/mosaic_image.dart';
 import '../actors/actor_detail_page.dart';
 import '../categories/category_videos_page.dart';
 
@@ -89,26 +90,22 @@ class _VideoDetailDialogState extends ConsumerState<VideoDetailDialog>
 
   Widget _buildLeftPanel(Size screenSize) {
     final leftWidth = screenSize.width * 0.85 * 0.7;
-    return RepaintBoundary(
-      child: SizedBox(
+    final pureMode = ref.watch(pureModeProvider);
+
+    return SizedBox(
       width: leftWidth,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          if (widget.video.fanartPath != null)
-            Image.file(
-              File(widget.video.fanartPath!),
+          if (pureMode)
+            MosaicImage(
+              imagePath: widget.video.fanartPath ?? widget.video.posterPath,
               fit: BoxFit.cover,
-              cacheWidth: 1200,
-              gaplessPlayback: true,
             )
+          else if (widget.video.fanartPath != null)
+            Image.file(File(widget.video.fanartPath!), fit: BoxFit.cover, cacheWidth: 1200, gaplessPlayback: true, errorBuilder: AppTheme.imageErrorBuilder)
           else if (widget.video.posterPath != null)
-            Image.file(
-              File(widget.video.posterPath!),
-              fit: BoxFit.cover,
-              cacheWidth: 600,
-              gaplessPlayback: true,
-            )
+            Image.file(File(widget.video.posterPath!), fit: BoxFit.cover, cacheWidth: 600, gaplessPlayback: true, errorBuilder: AppTheme.imageErrorBuilder)
           else
             Container(color: AppTheme.cardColor),
           Container(
@@ -138,28 +135,20 @@ class _VideoDetailDialogState extends ConsumerState<VideoDetailDialog>
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(GlassConstants.radiusSmall),
                       boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha:0.5),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
+                        BoxShadow(color: Colors.black.withValues(alpha:0.5), blurRadius: 20, offset: const Offset(0, 10)),
                       ],
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(GlassConstants.radiusSmall),
-                      child: Image.file(
-                        File(widget.video.posterPath!),
-                        fit: BoxFit.cover,
-                        cacheWidth: 280,
-                        gaplessPlayback: true,
-                      ),
+                      child: pureMode
+                          ? MosaicImage(imagePath: widget.video.posterPath, fit: BoxFit.cover)
+                          : Image.file(File(widget.video.posterPath!), fit: BoxFit.cover, cacheWidth: 280, gaplessPlayback: true, errorBuilder: AppTheme.imageErrorBuilder),
                     ),
                   ),
               ],
             ),
           ),
         ],
-      ),
       ),
     );
   }
@@ -505,11 +494,17 @@ class _VideoDetailDialogState extends ConsumerState<VideoDetailDialog>
   }
 
   Future<void> _toggleFavorite() async {
-    final repository = ref.read(videoRepositoryProvider);
-    await repository.toggleFavorite(widget.video.id!, !widget.video.isFavorite);
-    ref.invalidate(allVideosProvider);
-    ref.invalidate(favoriteVideosProvider);
-    if (mounted) Navigator.of(context).pop();
+    try {
+      final repository = ref.read(videoRepositoryProvider);
+      await repository.toggleFavorite(widget.video.id!, !widget.video.isFavorite);
+      ref.invalidate(allVideosProvider);
+      ref.invalidate(favoriteVideosProvider);
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        showCopyToast(context, '操作失败: $e');
+      }
+    }
   }
 
   Future<void> _openFolder() async {

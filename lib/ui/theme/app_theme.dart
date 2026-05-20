@@ -4,6 +4,28 @@ import 'dart:ui';
 import '../../core/models/models.dart';
 
 // ===== 统一常量 =====
+class LayoutConstants {
+  // Card dimensions
+  static const double posterWidth = 180;
+  static const double listThumbnailWidth = 200;
+  static const double listThumbnailHeight = 300;
+  static const double actorCardWidth = 140;
+
+  // Detail page
+  static const double detailAvatarSize = 180;
+  static const double detailInfoPanelWidth = 320;
+  static const double smallPosterWidth = 140;
+  static const double smallPosterHeight = 200;
+
+  // Window
+  static const double defaultWindowWidth = 1400;
+  static const double defaultWindowHeight = 900;
+  static const double titleBarHeight = 40;
+  static const double sidebarWidth = 220;
+  static const double minSidebarWidth = 70;
+  static const double maxSidebarWidth = 280;
+}
+
 class GlassConstants {
   // 圆角
   static const double radiusSmall = 12.0;
@@ -80,6 +102,15 @@ class AppTheme {
     end: Alignment.bottomRight,
     colors: [primaryLightColor, secondaryColor],
   );
+
+  static ImageErrorWidgetBuilder imageErrorBuilder = (context, error, stackTrace) {
+    return Container(
+      color: const Color(0xFFE8E8E8),
+      child: const Center(
+        child: Icon(Icons.broken_image, color: Color(0xFFBDBDBD), size: 32),
+      ),
+    );
+  };
 
   static ThemeData lightTheme({String? fontFamily}) {
     return ThemeData(
@@ -220,6 +251,40 @@ class AppTheme {
         radius: const Radius.circular(4),
         thickness: WidgetStateProperty.all(6),
       ),
+      popupMenuTheme: PopupMenuThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(GlassConstants.radiusLarge),
+        ),
+        color: Colors.white.withValues(alpha: 0.95),
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.black26,
+        elevation: 12,
+        textStyle: const TextStyle(
+          color: textPrimary,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  static Future<T?> showGlassMenu<T>({
+    required BuildContext context,
+    required RelativeRect position,
+    required List<PopupMenuEntry<T>> items,
+    T? initialValue,
+  }) {
+    return showMenu<T>(
+      context: context,
+      position: position,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(GlassConstants.radiusLarge),
+      ),
+      color: Colors.white.withValues(alpha: 0.95),
+      elevation: 12,
+      shadowColor: Colors.black26,
+      items: items,
+      initialValue: initialValue,
     );
   }
 }
@@ -734,61 +799,9 @@ void showCopyToast(BuildContext context, String text) {
                 sigmaX: GlassConstants.blurSmall,
                 sigmaY: GlassConstants.blurSmall,
               ),
-              child: AnimatedOpacity(
-                opacity: 1.0,
-                duration: GlassConstants.animFast,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.92),
-                    borderRadius: BorderRadius.circular(
-                      GlassConstants.radiusMedium,
-                    ),
-                    border: Border.all(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.12),
-                        blurRadius: 16,
-                        spreadRadius: 2,
-                        offset: const Offset(0, 4),
-                      ),
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 30,
-                        spreadRadius: 0,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.check_circle_rounded,
-                        color: AppTheme.primaryColor,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          text,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppTheme.primaryColor,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              child: _CopyToastContent(
+                text: text,
+                onRemove: () => overlayEntry.remove(),
               ),
             ),
           ),
@@ -798,9 +811,107 @@ void showCopyToast(BuildContext context, String text) {
   );
 
   overlay.insert(overlayEntry);
-  Timer(const Duration(seconds: 1, milliseconds: 500), () {
-    overlayEntry.remove();
-  });
+}
+
+class _CopyToastContent extends StatefulWidget {
+  final String text;
+  final VoidCallback onRemove;
+
+  const _CopyToastContent({required this.text, required this.onRemove});
+
+  @override
+  State<_CopyToastContent> createState() => _CopyToastContentState();
+}
+
+class _CopyToastContentState extends State<_CopyToastContent>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _opacityAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _opacityAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+    // Display for 1.5 seconds, then fade out
+    Future.delayed(const Duration(seconds: 1, milliseconds: 500), () {
+      if (mounted) {
+        _controller.forward().then((_) {
+          widget.onRemove();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _opacityAnimation,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 24,
+          vertical: 12,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.92),
+          borderRadius: BorderRadius.circular(
+            GlassConstants.radiusMedium,
+          ),
+          border: Border.all(
+            color: AppTheme.primaryColor.withValues(alpha: 0.15),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.primaryColor.withValues(alpha: 0.12),
+              blurRadius: 16,
+              spreadRadius: 2,
+              offset: const Offset(0, 4),
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 30,
+              spreadRadius: 0,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.check_circle_rounded,
+              color: AppTheme.primaryColor,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                widget.text,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppTheme.primaryColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 // ===== 视图模式图标辅助函数 =====

@@ -490,12 +490,31 @@ class MediaScannerService {
         if (kDebugMode) debugPrint('[MoveToWatched] Created actor directory: ${targetActorDir.path}');
       }
       final targetEpisodeDir = Directory(path.join(targetActorDir.path, episodeDirName));
+      // Use a temporary location first to avoid data loss if rename fails
+      final tempTargetDir = Directory(path.join(targetActorDir.path, '${episodeDirName}.moving'));
+      if (await tempTargetDir.exists()) {
+        await tempTargetDir.delete(recursive: true);
+      }
       if (await targetEpisodeDir.exists()) {
-        await targetEpisodeDir.delete(recursive: true);
-        if (kDebugMode) debugPrint('[MoveToWatched] Deleted existing target directory');
+        // Move existing target to temp location instead of deleting
+        await targetEpisodeDir.rename(tempTargetDir.path);
       }
 
-      await sourceDir.rename(targetEpisodeDir.path);
+      try {
+        await sourceDir.rename(targetEpisodeDir.path);
+        // Success - delete the old target that was moved to temp
+        if (await tempTargetDir.exists()) {
+          await tempTargetDir.delete(recursive: true);
+          if (kDebugMode) debugPrint('[MoveToWatched] Deleted old target directory');
+        }
+      } catch (e) {
+        // Rename failed - restore the original target from temp
+        if (await tempTargetDir.exists()) {
+          await tempTargetDir.rename(targetEpisodeDir.path);
+          if (kDebugMode) debugPrint('[MoveToWatched] Restored original target directory after failed move');
+        }
+        rethrow;
+      }
 
       if (kDebugMode) {
         debugPrint('[MoveToWatched] Successfully renamed to: ${targetEpisodeDir.path}');

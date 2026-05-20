@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/models/models.dart';
+import '../../../core/utils/app_settings.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/actor_avatar.dart';
 import 'actor_detail_page.dart';
@@ -16,6 +17,7 @@ class ActorsPage extends ConsumerStatefulWidget {
 class _ActorsPageState extends ConsumerState<ActorsPage> {
   final _searchController = TextEditingController();
   final _columnCountController = TextEditingController();
+  final _searchDebouncer = Debouncer();
   String _searchQuery = '';
   bool _sortByCount = false;
   bool _sortDescending = true;
@@ -48,6 +50,7 @@ class _ActorsPageState extends ConsumerState<ActorsPage> {
   void dispose() {
     _searchController.dispose();
     _columnCountController.dispose();
+    _searchDebouncer.dispose();
     super.dispose();
   }
 
@@ -85,25 +88,9 @@ class _ActorsPageState extends ConsumerState<ActorsPage> {
               });
 
               if (filteredActors.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.people_outline,
-                        size: 64,
-                        color: AppTheme.textSecondary.withValues(alpha:0.5),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        '暂无演员',
-                        style: TextStyle(
-                          color: AppTheme.textSecondary.withValues(alpha:0.5),
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
+                return const EmptyStateWidget(
+                  icon: Icons.people_outline,
+                  message: '暂无演员',
                 );
               }
 
@@ -149,8 +136,10 @@ class _ActorsPageState extends ConsumerState<ActorsPage> {
               controller: _searchController,
               hintText: '搜索演员...',
               onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
+                _searchDebouncer.run(() {
+                  setState(() {
+                    _searchQuery = value;
+                  });
                 });
               },
             ),

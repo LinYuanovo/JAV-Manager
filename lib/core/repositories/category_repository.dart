@@ -185,4 +185,19 @@ class CategoryRepository {
     ''', [type, '%$query%']);
     return maps.map((map) => Category.fromMap(map)).toList();
   }
+
+  Future<int> deleteOrphanedCategories() async {
+    final db = await _db;
+    return await db.delete(
+      'categories',
+      where: '''
+        id NOT IN (
+          SELECT DISTINCT c.id FROM categories c
+          LEFT JOIN video_categories vc ON c.id = vc.category_id
+          LEFT JOIN videos v ON vc.video_id = v.id AND v.is_watched = 0
+          WHERE v.id IS NOT NULL OR c.is_favorite = 1
+        )
+      ''',
+    );
+  }
 }

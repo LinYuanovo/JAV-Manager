@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'app_settings.dart';
 
 /// Read Windows system proxy from registry.
 /// Returns the proxy URL (e.g. "127.0.0.1:7890") or null if not set/disabled.
@@ -90,7 +90,7 @@ http.Client createProxyClient({String? proxyMode, String? proxyUrl}) {
 
 /// Convenience: read proxy settings from SharedPreferences and create a client.
 Future<http.Client> createProxyClientFromPrefs() async {
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = await AppSettings.load();
   final proxyMode = prefs.getString('proxy_mode') ?? 'none';
   final proxyUrl = prefs.getString('proxy_url') ?? '';
   return createProxyClient(proxyMode: proxyMode, proxyUrl: proxyUrl);

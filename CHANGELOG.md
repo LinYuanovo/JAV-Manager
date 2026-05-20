@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-05-20
+
+### Added
+- 全局玻璃风格菜单主题（PopupMenuThemeData 圆角20px + 半透明背景 + 柔和阴影）
+- 右键上下文菜单统一使用 `AppTheme.showGlassMenu()` 玻璃样式
+- 搜索防抖工具类 `Debouncer`（300ms 延迟，媒体页/演员页/已看页）
+- `LayoutConstants` 常量类（窗口尺寸、卡片宽度、详情页尺寸等统一管理）
+- `VideoExtension.extractCode()` 扩展方法（替代3处重复的 `_extractCode`）
+- `AppSettings` 单例缓存（避免每次调用重复读磁盘）
+- `AppSettings.invalidateCache()` 方法（导入备份后刷新缓存）
+- 收藏页面 tab 持久化（`favorites_last_tab`）
+- 分类页面 tab 持久化（`categories_last_tab`）
+
+### Fixed
+- **严重**：修复 DatabaseHelper 竞态条件导致 "Future already completed" 崩溃（Completer → Future 缓存模式）
+- **严重**：修复点击影片卡死 / RenderBox was not laid out（移除 Expanded 外层 RepaintBoundary）
+- **严重**：修复 N+1 查询问题（1000 视频从 2001 次查询降至 3 次）
+- **严重**：修复 HTTP 客户端泄漏（avatar_service / wikipedia_service 添加 try/finally）
+- **严重**：修复 _mapToJson 手动拼接 JSON 导致特殊字符损坏（改用 jsonEncode）
+- **严重**：修复 AppSettings 非原子写入导致崩溃时文件损坏（先写 .tmp 再 rename）
+- **严重**：修复 ViewMode/SortMode 枚举索引越界崩溃（添加 .clamp 边界检查）
+- **严重**：修复 Timer 回调未防并发扫描（_isScanning/_isMoving 锁标志）
+- **严重**：修复 WebDAV response stream 未消费导致连接泄漏（drain<void>()）
+- **严重**：修复 moveVideoToWatched 先删目标再重命名数据丢失风险（临时位置安全移动）
+- 修复所有 Image.file/Image.network 缺少 errorBuilder 导致红屏崩溃
+- 修复 AutoTaskService.dispose() 未被调用导致 StreamController 泄漏
+- 修复 copyWith 无法将 nullable 字段设为 null（_undefined 哨兵值模式）
+- 修复分类/收藏页面 tab 初始化从第一个切换动画（initialIndex 同步传入）
+- 修复 ActorAvatar 同步文件检查阻塞 UI 线程（_fileExistsCache 缓存）
+- 修复 showCopyToast 动画无效（创建 StatefulWidget 实现淡出效果）
+- 修复已看页面列表模式下纯净模式显示原始图片
+- 修复媒体页面收藏按钮在纯净模式下消失
+- 修复影片详情页海报墙在纯净模式下显示原始图片
+- 修复 TabController 监听过度触发 setState（indexIsChanging 检查）
+- 修复 dynamic 类型滥用（watched_page 全部替换为 Video 类型）
+- 修复异步操作缺少 try/catch（6 个文件的 toggleFavorite 添加错误处理）
+
+### Changed
+- 版本号升级至 1.3.0
+- 全面代码审查与性能优化（26 项改进）
+- 所有 PopupMenuButton 自动应用玻璃拟态风格
+- 右键菜单、排序菜单、视图菜单统一圆润风格
+- 窗口最大化图标动态切换（未最大化 ▢ / 最大化后 ▢▢）
+- 已看页面标题栏移除数字徽章和图标
+- 收藏页面标题栏移除图标
+- 6 处空状态 UI 统一复用 EmptyStateWidget 组件
+- 数据库查询性能大幅提升（批量关联加载替代逐条查询）
+
 ## [1.2.0] - 2026-05-20
 
 ### Added

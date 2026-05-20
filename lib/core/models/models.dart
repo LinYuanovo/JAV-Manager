@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+const _undefined = Object();
+
 enum ViewMode {
   poster,
   posterWithTitle,
@@ -100,9 +102,9 @@ class Video {
     String? folderPath,
     String? title,
     String? plot,
-    String? posterPath,
-    String? fanartPath,
-    String? nfoPath,
+    Object? posterPath = _undefined,
+    Object? fanartPath = _undefined,
+    Object? nfoPath = _undefined,
     int? watchCount,
     DateTime? lastWatchedTime,
     bool? isFavorite,
@@ -118,9 +120,9 @@ class Video {
       folderPath: folderPath ?? this.folderPath,
       title: title ?? this.title,
       plot: plot ?? this.plot,
-      posterPath: posterPath ?? this.posterPath,
-      fanartPath: fanartPath ?? this.fanartPath,
-      nfoPath: nfoPath ?? this.nfoPath,
+      posterPath: identical(posterPath, _undefined) ? this.posterPath : posterPath as String?,
+      fanartPath: identical(fanartPath, _undefined) ? this.fanartPath : fanartPath as String?,
+      nfoPath: identical(nfoPath, _undefined) ? this.nfoPath : nfoPath as String?,
       watchCount: watchCount ?? this.watchCount,
       lastWatchedTime: lastWatchedTime ?? this.lastWatchedTime,
       isFavorite: isFavorite ?? this.isFavorite,
@@ -130,6 +132,13 @@ class Video {
       actors: actors ?? this.actors,
       categories: categories ?? this.categories,
     );
+  }
+}
+
+extension VideoExtension on Video {
+  String extractCode() {
+    final match = RegExp(r'^[A-Za-z]{2,5}[-_]?\d{3,5}').firstMatch(title ?? '');
+    return match?.group(0) ?? title ?? '未知';
   }
 }
 
@@ -239,18 +248,18 @@ class Actor {
   Actor copyWith({
     int? id,
     String? name,
-    String? avatarUrl,
+    Object? avatarUrl = _undefined,
     bool? isFavorite,
-    Map<String, dynamic>? infoJson,
+    Object? infoJson = _undefined,
     DateTime? createdAt,
     int? videoCount,
   }) {
     return Actor(
       id: id ?? this.id,
       name: name ?? this.name,
-      avatarUrl: avatarUrl ?? this.avatarUrl,
+      avatarUrl: identical(avatarUrl, _undefined) ? this.avatarUrl : avatarUrl as String?,
       isFavorite: isFavorite ?? this.isFavorite,
-      infoJson: infoJson ?? this.infoJson,
+      infoJson: identical(infoJson, _undefined) ? this.infoJson : infoJson as Map<String, dynamic>?,
       createdAt: createdAt ?? this.createdAt,
       videoCount: videoCount ?? this.videoCount,
     );
@@ -319,7 +328,7 @@ class Category {
     int? id,
     String? type,
     String? name,
-    String? nameTraditional,
+    Object? nameTraditional = _undefined,
     bool? isFavorite,
     DateTime? createdAt,
     int? videoCount,
@@ -329,7 +338,7 @@ class Category {
       id: id ?? this.id,
       type: type ?? this.type,
       name: name ?? this.name,
-      nameTraditional: nameTraditional ?? this.nameTraditional,
+      nameTraditional: identical(nameTraditional, _undefined) ? this.nameTraditional : nameTraditional as String?,
       isFavorite: isFavorite ?? this.isFavorite,
       createdAt: createdAt ?? this.createdAt,
       videoCount: videoCount ?? this.videoCount,

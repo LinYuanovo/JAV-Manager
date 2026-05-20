@@ -8,6 +8,7 @@ import 'package:window_manager/window_manager.dart';
 import '../../core/providers/providers.dart';
 import '../../core/models/models.dart';
 import '../theme/app_theme.dart';
+import '../widgets/mosaic_image.dart';
 import 'media/media_page.dart';
 import 'actors/actors_page.dart';
 import 'categories/categories_page.dart';
@@ -24,12 +25,13 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> with WindowListener {
   bool _isSidebarExpanded = true;
-  double _sidebarWidth = 220;
-  double _minSidebarWidth = 70;
-  double _maxSidebarWidth = 280;
+  double _sidebarWidth = LayoutConstants.sidebarWidth;
+  double _minSidebarWidth = LayoutConstants.minSidebarWidth;
+  double _maxSidebarWidth = LayoutConstants.maxSidebarWidth;
   Size? _lastNormalSize;
   Offset? _lastNormalPosition;
   StreamSubscription? _autoMoveSubscription;
+  bool _isMaximized = false;
 
   int get _mediaCount {
     final asyncVideos = ref.watch(allVideosProvider);
@@ -54,11 +56,12 @@ class _HomePageState extends ConsumerState<HomePage> with WindowListener {
       await windowManager.ensureInitialized();
 
       final prefs = ref.read(sharedPreferencesProvider);
-      final width = prefs.getDouble('window_width') ?? 1400;
-      final height = prefs.getDouble('window_height') ?? 900;
+      final width = prefs.getDouble('window_width') ?? LayoutConstants.defaultWindowWidth;
+      final height = prefs.getDouble('window_height') ?? LayoutConstants.defaultWindowHeight;
       final x = prefs.getDouble('window_x');
       final y = prefs.getDouble('window_y');
       final isMaximized = prefs.getBool('window_maximized') ?? false;
+      _isMaximized = isMaximized;
 
       if (isMaximized) {
         await windowManager.setSize(Size(width, height));
@@ -133,6 +136,16 @@ class _HomePageState extends ConsumerState<HomePage> with WindowListener {
     }
   }
 
+  @override
+  void onWindowMaximize() {
+    setState(() => _isMaximized = true);
+  }
+
+  @override
+  void onWindowUnmaximize() {
+    setState(() => _isMaximized = false);
+  }
+
   void _syncMediaCount() {
     final asyncVideos = ref.read(allVideosProvider);
     asyncVideos.whenOrNull(data: (videos) {
@@ -146,6 +159,7 @@ class _HomePageState extends ConsumerState<HomePage> with WindowListener {
   void dispose() {
     windowManager.removeListener(this);
     _autoMoveSubscription?.cancel();
+    ref.read(autoTaskServiceProvider).dispose();
     super.dispose();
   }
 
@@ -174,7 +188,8 @@ class _HomePageState extends ConsumerState<HomePage> with WindowListener {
   }
 
   Widget _buildTitleBar() {
-    return GestureDetector(
+    return RepaintBoundary(
+    child: GestureDetector(
       onPanStart: (_) => windowManager.startDragging(),
       onDoubleTap: () async {
         if (await windowManager.isMaximized()) {
@@ -190,7 +205,7 @@ class _HomePageState extends ConsumerState<HomePage> with WindowListener {
             sigmaY: GlassConstants.blurMedium,
           ),
           child: Container(
-            height: 40,
+            height: LayoutConstants.titleBarHeight,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha:0.7),
               border: Border(
@@ -226,6 +241,7 @@ class _HomePageState extends ConsumerState<HomePage> with WindowListener {
           ),
         ),
       ),
+    ),
     );
   }
 
@@ -237,12 +253,15 @@ class _HomePageState extends ConsumerState<HomePage> with WindowListener {
           onPressed: () => windowManager.minimize(),
         ),
         _WindowButton(
-          icon: Icons.crop_square,
+          icon: _isMaximized ? Icons.filter_none : Icons.crop_square,
+          iconSize: 13,
           onPressed: () async {
-            if (await windowManager.isMaximized()) {
-              windowManager.unmaximize();
+            if (_isMaximized) {
+              setState(() => _isMaximized = false);
+              await windowManager.unmaximize();
             } else {
-              windowManager.maximize();
+              setState(() => _isMaximized = true);
+              await windowManager.maximize();
             }
           },
         ),
@@ -479,11 +498,13 @@ class _WindowButton extends StatefulWidget {
   final IconData icon;
   final VoidCallback onPressed;
   final bool isClose;
+  final double? iconSize;
 
   const _WindowButton({
     required this.icon,
     required this.onPressed,
     this.isClose = false,
+    this.iconSize,
   });
 
   @override
@@ -511,7 +532,7 @@ class _WindowButtonState extends State<_WindowButton> {
               : Colors.transparent,
           child: Icon(
             widget.icon,
-            size: 16,
+            size: widget.iconSize ?? 16,
             color: _isHovered && widget.isClose
                 ? Colors.white
                 : AppTheme.textSecondary,
@@ -603,7 +624,7 @@ class VideoGrid extends ConsumerWidget {
 
     switch (mode) {
       case ViewMode.poster:
-        return (width / 180).floor().clamp(2, 7);   // max 7 columns
+        return (width / LayoutConstants.posterWidth).floor().clamp(2, 7);   // max 7 columns
       case ViewMode.posterWithTitle:
         return (width / 200).floor().clamp(2, 6);     // max 6 columns
       case ViewMode.posterWall:
@@ -634,11 +655,10 @@ class VideoGrid extends ConsumerWidget {
           onFavoriteToggle: onFavoriteToggle,
           fontSize: fontSize,
         );
-        if (!enableAnimation) return card;
-        return StaggeredItem(
-          index: index,
-          child: card,
-        );
+        final child = enableAnimation
+            ? StaggeredItem(index: index, child: card)
+            : card;
+        return RepaintBoundary(child: child);
       },
     );
   }
@@ -661,7 +681,7 @@ class VideoGrid extends ConsumerWidget {
   }
 }
 
-class _VideoCard extends StatefulWidget {
+class _VideoCard extends ConsumerStatefulWidget {
   final Video video;
   final ViewMode viewMode;
   final Function(Video)? onTap;
@@ -681,10 +701,10 @@ class _VideoCard extends StatefulWidget {
   });
 
   @override
-  State<_VideoCard> createState() => _VideoCardState();
+  ConsumerState<_VideoCard> createState() => _VideoCardState();
 }
 
-class _VideoCardState extends State<_VideoCard>
+class _VideoCardState extends ConsumerState<_VideoCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
@@ -710,6 +730,8 @@ class _VideoCardState extends State<_VideoCard>
 
   @override
   Widget build(BuildContext context) {
+    final pureMode = ref.watch(pureModeProvider);
+
     return MouseRegion(
       onEnter: (_) {
         setState(() => _isHovered = true);
@@ -731,7 +753,7 @@ class _VideoCardState extends State<_VideoCard>
               child: child,
             );
           },
-          child: _buildCardContent(),
+          child: pureMode ? _buildPureModeCard() : _buildCardContent(),
         ),
       ),
     );
@@ -825,6 +847,7 @@ class _VideoCardState extends State<_VideoCard>
                     fit: BoxFit.cover,
                     cacheWidth: 600,
                     gaplessPlayback: true,
+                    errorBuilder: AppTheme.imageErrorBuilder,
                   )
                 else if (widget.video.posterPath != null)
                   Image.file(
@@ -832,6 +855,7 @@ class _VideoCardState extends State<_VideoCard>
                     fit: BoxFit.cover,
                     cacheWidth: 400,
                     gaplessPlayback: true,
+                    errorBuilder: AppTheme.imageErrorBuilder,
                   )
                 else
                   Container(
@@ -903,6 +927,7 @@ class _VideoCardState extends State<_VideoCard>
                 fit: BoxFit.cover,
                 cacheWidth: 400,
                 gaplessPlayback: true,
+                errorBuilder: AppTheme.imageErrorBuilder,
               )
             : Container(
                 color: AppTheme.cardColor,
@@ -939,9 +964,96 @@ class _VideoCardState extends State<_VideoCard>
       ),
     );
   }
+
+  Widget _buildPureModeCard() {
+    final showTitle = widget.viewMode == ViewMode.posterWithTitle;
+    final showWall = widget.viewMode == ViewMode.posterWall;
+
+    if (showWall) {
+      return _buildPureModeWallCard();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(GlassConstants.radiusLarge),
+                child: MosaicImage(
+                  imagePath: widget.video.fanartPath ?? widget.video.posterPath,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: _buildFavoriteButton(),
+              ),
+            ],
+          ),
+        ),
+        if (showTitle) ...[
+          const SizedBox(height: 8),
+          Text(
+            widget.video.extractCode(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: widget.fontSize * 0.93,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildPureModeWallCard() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                MosaicImage(
+                  imagePath: widget.video.fanartPath ?? widget.video.posterPath,
+                  fit: BoxFit.cover,
+                ),
+                Positioned(
+                  top: 8,
+                  right: 12,
+                  child: _buildFavoriteButton(),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          widget.video.extractCode(),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: AppTheme.textPrimary,
+            fontSize: widget.fontSize * 0.86,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
-class _VideoListItem extends StatelessWidget {
+class _VideoListItem extends ConsumerWidget {
   final Video video;
   final Function(Video)? onTap;
   final Function(Video)? onDoubleTap;
@@ -959,7 +1071,47 @@ class _VideoListItem extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pureMode = ref.watch(pureModeProvider);
+
+    if (pureMode) {
+      return GestureDetector(
+        onTap: () => onTap?.call(video),
+        onDoubleTap: () => onDoubleTap?.call(video),
+        onSecondaryTapUp: (details) => onSecondaryTap?.call(video, details.globalPosition),
+        child: GlassContainer(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: 360,
+                  height: 202,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      MosaicImage(
+                        imagePath: video.fanartPath ?? video.posterPath,
+                        fit: BoxFit.cover,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(child: Text(video.extractCode(), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textPrimary, fontSize: fontSize, fontWeight: FontWeight.w600))),
+              if (video.isWatched)
+                Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: AppTheme.successColor.withValues(alpha:0.1), borderRadius: BorderRadius.circular(8)), child: Row(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.visibility, size: 14, color: AppTheme.successColor), const SizedBox(width: 4), Text('${video.watchCount}', style: const TextStyle(color: AppTheme.successColor, fontSize: 12))])),
+              const SizedBox(width: 8),
+              IconButton(icon: Icon(video.isFavorite ? Icons.favorite : Icons.favorite_border, color: video.isFavorite ? AppTheme.accentColor : AppTheme.textSecondary), onPressed: () => onFavoriteToggle?.call(video)),
+            ],
+          ),
+        ),
+      );
+    }
+
     return GestureDetector(
       onTap: () => onTap?.call(video),
       onDoubleTap: () => onDoubleTap?.call(video),
@@ -978,11 +1130,13 @@ class _VideoListItem extends StatelessWidget {
                     ? Image.file(
                         File(video.fanartPath!),
                         fit: BoxFit.cover,
+                        errorBuilder: AppTheme.imageErrorBuilder,
                       )
                     : video.posterPath != null
                         ? Image.file(
                             File(video.posterPath!),
                             fit: BoxFit.cover,
+                            errorBuilder: AppTheme.imageErrorBuilder,
                           )
                         : Container(
                             color: AppTheme.cardColor,

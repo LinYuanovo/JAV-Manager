@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/app_settings.dart';
 import '../repositories/video_repository.dart';
 import '../repositories/actor_repository.dart';
 import '../repositories/category_repository.dart';
@@ -11,8 +11,8 @@ import '../services/avatar_service.dart';
 import '../services/webdav_service.dart';
 import '../models/models.dart';
 
-final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
-  throw UnimplementedError('SharedPreferences not initialized');
+final sharedPreferencesProvider = Provider<AppSettings>((ref) {
+  throw UnimplementedError('AppSettings not initialized');
 });
 
 final videoRepositoryProvider = Provider<VideoRepository>((ref) {
@@ -91,6 +91,11 @@ final fontSizeProvider = StateProvider<double>((ref) {
 final enableGridAnimationProvider = StateProvider<bool>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   return prefs.getBool('enable_grid_animation') ?? true;
+});
+
+final pureModeProvider = StateProvider<bool>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return prefs.getBool('pure_mode_enabled') ?? false;
 });
 
 final watchedVideosProvider = FutureProvider<List<Video>>((ref) async {
@@ -312,25 +317,25 @@ final selectedNavIndexProvider = StateProvider<int>((ref) {
 final viewModeProvider = StateProvider<ViewMode>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   final index = prefs.getInt('view_mode') ?? 0;
-  return ViewMode.values[index];
+  return ViewMode.values[index.clamp(0, ViewMode.values.length - 1)];
 });
 
 final sortModeProvider = StateProvider<SortMode>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   final index = prefs.getInt('sort_mode') ?? 0;
-  return SortMode.values[index];
+  return SortMode.values[index.clamp(0, SortMode.values.length - 1)];
 });
 
 final favoriteSortModeProvider = StateProvider<SortMode>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   final index = prefs.getInt('favorite_sort_mode') ?? 0;
-  return SortMode.values[index];
+  return SortMode.values[index.clamp(0, SortMode.values.length - 1)];
 });
 
 final favoriteViewModeProvider = StateProvider<ViewMode>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   final index = prefs.getInt('favorite_view_mode') ?? 0;
-  return ViewMode.values[index];
+  return ViewMode.values[index.clamp(0, ViewMode.values.length - 1)];
 });
 
 final isFixedColumnCountProvider = StateProvider<bool>((ref) {
@@ -368,13 +373,13 @@ final actorFixedColumnCountProvider = StateProvider<int>((ref) {
 final actorSortModeProvider = StateProvider<SortMode>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   final sortIndex = prefs.getInt('actor_sort_mode') ?? 0;
-  return SortMode.values[sortIndex];
+  return SortMode.values[sortIndex.clamp(0, SortMode.values.length - 1)];
 });
 
 final actorViewModeProvider = StateProvider<ViewMode>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   final viewIndex = prefs.getInt('actor_view_mode') ?? 2;
-  return ViewMode.values[viewIndex];
+  return ViewMode.values[viewIndex.clamp(0, ViewMode.values.length - 1)];
 });
 
 final isCategoryFixedColumnCountProvider = StateProvider<bool>((ref) {
@@ -390,11 +395,11 @@ final categoryFixedColumnCountProvider = StateProvider<int>((ref) {
 final categorySortModeProvider = StateProvider<SortMode>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   final sortIndex = prefs.getInt('category_sort_mode') ?? 0;
-  return SortMode.values[sortIndex];
+  return SortMode.values[sortIndex.clamp(0, SortMode.values.length - 1)];
 });
 
 final categoryViewModeProvider = StateProvider<ViewMode>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   final viewIndex = prefs.getInt('category_view_mode') ?? 2;
-  return ViewMode.values[viewIndex];
+  return ViewMode.values[viewIndex.clamp(0, ViewMode.values.length - 1)];
 });

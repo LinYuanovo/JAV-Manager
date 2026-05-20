@@ -60,11 +60,14 @@ class WebdavService {
         debugPrint('[WebDAV] PROPFIND body start: ${body.substring(0, body.length > 300 ? 300 : body.length)}');
         return _parsePropfindResponse(body);
       } else if (statusCode == 404) {
+        // Drain the response stream to allow connection reuse
+        await response.stream.drain<void>();
         // Folder doesn't exist yet - create it
         await _createFolder(serverUrl, username, password);
         return [];
       } else {
         debugPrint('[WebDAV] PROPFIND failed: $statusCode');
+        await response.stream.drain<void>();
         return [];
       }
     } catch (e) {
@@ -216,6 +219,9 @@ class WebdavService {
       request.headers.addAll(_authHeaders(username, password));
       final response = await request.send();
 
+      // Drain the response stream to allow connection reuse
+      await response.stream.drain<void>();
+
       // 201 = created, 405 = already exists
       debugPrint(
         '[WebDAV] MKCOL status: ${response.statusCode}',
@@ -264,7 +270,7 @@ class WebdavService {
         files.add(WebDavFile(
           name: name,
           sizeBytes: size,
-          modifiedDate: date ?? DateTime.now(),
+          modifiedDate: date,
         ));
       }
     } catch (e) {

@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/models/models.dart';
+import '../../../core/utils/app_settings.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/mosaic_image.dart';
 import '../actors/actor_detail_page.dart';
 import '../home_page.dart';
 import '../media/video_detail_dialog.dart';
@@ -17,6 +19,7 @@ class WatchedPage extends ConsumerStatefulWidget {
 
 class _WatchedPageState extends ConsumerState<WatchedPage> {
   final _searchController = TextEditingController();
+  final _searchDebouncer = Debouncer();
   String _searchQuery = '';
   SortMode _sortMode = SortMode.recentlyWatchedDesc;
   ViewMode _viewMode = ViewMode.list;
@@ -24,6 +27,7 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _searchDebouncer.dispose();
     super.dispose();
   }
 
@@ -48,25 +52,9 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
               filteredVideos = sortVideos(filteredVideos, _sortMode);
 
               if (filteredVideos.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.visibility_outlined,
-                        size: 64,
-                        color: AppTheme.successColor.withValues(alpha:0.3),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        '暂无已看记录',
-                        style: TextStyle(
-                          color: AppTheme.textSecondary.withValues(alpha:0.5),
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
+                return const EmptyStateWidget(
+                  icon: Icons.visibility_outlined,
+                  message: '暂无已看记录',
                 );
               }
 
@@ -97,12 +85,6 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
         children: [
-          const Icon(
-            Icons.visibility,
-            color: AppTheme.successColor,
-            size: 24,
-          ),
-          const SizedBox(width: 12),
           Row(
             children: [
               ShaderMask(
@@ -116,8 +98,6 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              _buildCountBadge(videosAsync),
             ],
           ),
           const SizedBox(width: 24),
@@ -150,8 +130,10 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
               controller: _searchController,
               hintText: '搜索已观看影片...',
               onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
+                _searchDebouncer.run(() {
+                  setState(() {
+                    _searchQuery = value;
+                  });
                 });
               },
             ),
@@ -182,7 +164,7 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
     );
   }
 
-  Widget _buildVideosList(List videos) {
+  Widget _buildVideosList(List<Video> videos) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: videos.length,
@@ -212,21 +194,27 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
   }
 
   Future<void> _toggleFavorite(Video video) async {
-    final repository = ref.read(videoRepositoryProvider);
-    await repository.toggleFavorite(video.id!, !video.isFavorite);
-    ref.invalidate(watchedVideosProvider);
-    ref.invalidate(allVideosProvider);
-    ref.invalidate(favoriteVideosProvider);
+    try {
+      final repository = ref.read(videoRepositoryProvider);
+      await repository.toggleFavorite(video.id!, !video.isFavorite);
+      ref.invalidate(watchedVideosProvider);
+      ref.invalidate(allVideosProvider);
+      ref.invalidate(favoriteVideosProvider);
+    } catch (e) {
+      if (mounted) {
+        showCopyToast(context, '操作失败: $e');
+      }
+    }
   }
 
-  void _showVideoDetail(video) {
+  void _showVideoDetail(Video video) {
     showDialog(
       context: context,
       builder: (context) => VideoDetailDialog(video: video),
     );
   }
 
-  Future<void> _playVideo(dynamic video) async {
+  Future<void> _playVideo(Video video) async {
     final repository = ref.read(videoRepositoryProvider);
     await repository.incrementWatchCount(video.id!);
     final prefs = ref.read(sharedPreferencesProvider);
@@ -249,8 +237,8 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
     ref.invalidate(recentlyWatchedVideosProvider);
   }
 
-  void _showContextMenu(dynamic video, Offset position) {
-    showMenu(
+  void _showContextMenu(Video video, Offset position) {
+    AppTheme.showGlassMenu(
       context: context,
       position: RelativeRect.fromLTRB(position.dx, position.dy, position.dx + 1, position.dy + 1),
       items: [
@@ -288,7 +276,7 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
 }
 
 class _WatchedVideoCard extends ConsumerStatefulWidget {
-  final dynamic video;
+  final Video video;
   final VoidCallback onTap;
   final VoidCallback? onDoubleTap;
   final Function(Offset)? onSecondaryTap;
@@ -330,6 +318,8 @@ class _WatchedVideoCardState extends ConsumerState<_WatchedVideoCard>
 
   @override
   Widget build(BuildContext context) {
+    final pureMode = ref.watch(pureModeProvider);
+
     return MouseRegion(
       onEnter: (_) {
         setState(() => _isHovered = true);
@@ -362,23 +352,16 @@ class _WatchedVideoCardState extends ConsumerState<_WatchedVideoCard>
                   child: SizedBox(
                     width: 240,
                     height: 135,
-                    child: widget.video.fanartPath != null
-                        ? Image.file(
-                            File(widget.video.fanartPath!),
+                    child: pureMode
+                        ? MosaicImage(
+                            imagePath: widget.video.fanartPath ?? widget.video.posterPath,
                             fit: BoxFit.cover,
                           )
-                        : widget.video.posterPath != null
-                            ? Image.file(
-                                File(widget.video.posterPath!),
-                                fit: BoxFit.cover,
-                              )
-                            : Container(
-                                color: AppTheme.surfaceColor,
-                                child: const Icon(
-                                  Icons.movie,
-                                  color: AppTheme.textSecondary,
-                                ),
-                              ),
+                        : widget.video.fanartPath != null
+                            ? Image.file(File(widget.video.fanartPath!), fit: BoxFit.cover, errorBuilder: AppTheme.imageErrorBuilder)
+                            : widget.video.posterPath != null
+                                ? Image.file(File(widget.video.posterPath!), fit: BoxFit.cover, errorBuilder: AppTheme.imageErrorBuilder)
+                                : Container(color: AppTheme.surfaceColor, child: const Icon(Icons.movie, color: AppTheme.textSecondary)),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -387,17 +370,18 @@ class _WatchedVideoCardState extends ConsumerState<_WatchedVideoCard>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.video.title ?? '未知标题',
+                        pureMode ? widget.video.extractCode() : (widget.video.title ?? '未知标题'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        textAlign: pureMode ? TextAlign.center : TextAlign.start,
+                        style: TextStyle(
                           color: AppTheme.textPrimary,
                           fontSize: 15,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: pureMode ? FontWeight.w600 : FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      if (widget.video.actors.isNotEmpty)
+                      if (!pureMode && widget.video.actors.isNotEmpty) ...[
+                        const SizedBox(height: 8),
                         Text(
                           widget.video.actors.map((a) => a.name).join(', '),
                           maxLines: 1,
@@ -407,6 +391,7 @@ class _WatchedVideoCardState extends ConsumerState<_WatchedVideoCard>
                             fontSize: 13,
                           ),
                         ),
+                      ],
                     ],
                   ),
                 ),
@@ -479,7 +464,7 @@ class _WatchedVideoCardState extends ConsumerState<_WatchedVideoCard>
         if (widget.video.lastWatchedTime != null) ...[
           const SizedBox(height: 4),
           Text(
-            _formatDate(widget.video.lastWatchedTime),
+            _formatDate(widget.video.lastWatchedTime!),
             style: TextStyle(
               color: AppTheme.textSecondary.withValues(alpha:0.7),
               fontSize: 11,
