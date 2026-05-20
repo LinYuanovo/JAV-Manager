@@ -1,10 +1,9 @@
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/models/models.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/actor_avatar.dart';
 import 'actor_detail_page.dart';
 
 class ActorsPage extends ConsumerStatefulWidget {
@@ -458,6 +457,7 @@ class _ActorsPageState extends ConsumerState<ActorsPage> {
             }
             return false;
           } catch (e) {
+            debugPrint('Failed to fetch actor info for ${actor.name}: $e');
             return false;
           }
         }));
@@ -592,7 +592,10 @@ class _ActorCardState extends State<_ActorCard>
                         ],
                       ),
                       child: ClipOval(
-                        child: _buildAvatar(),
+                        child: ActorAvatar(
+                          avatarUrl: widget.actor.avatarUrl,
+                          name: widget.actor.name,
+                        ),
                       ),
                     ),
                     Positioned(
@@ -660,49 +663,6 @@ class _ActorCardState extends State<_ActorCard>
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAvatar() {
-    if (widget.actor.avatarUrl != null && widget.actor.avatarUrl!.isNotEmpty) {
-      final file = File(widget.actor.avatarUrl!);
-      return FutureBuilder<Uint8List>(
-        future: file.readAsBytes(),
-        builder: (context, snapshot) {
-          if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
-            return Image.memory(
-              snapshot.data!,
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-              errorBuilder: (context, error, stackTrace) {
-                return _buildPlaceholder();
-              },
-            );
-          }
-          return _buildPlaceholder();
-        },
-      );
-    }
-    return _buildPlaceholder();
-  }
-
-  Widget _buildPlaceholder() {
-    return Container(
-      color: AppTheme.cardColor,
-      child: Center(
-        child: ShaderMask(
-          shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
-          child: Text(
-            widget.actor.name.substring(0, 1).toUpperCase(),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-            ),
           ),
         ),
       ),

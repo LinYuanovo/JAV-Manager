@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:math';
 import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,7 +56,7 @@ class _MediaPageState extends ConsumerState<MediaPage> {
               final filteredVideos = watchedPath.isNotEmpty
                   ? videos.where((v) => !v.folderPath.contains(watchedPath)).toList()
                   : videos;
-              final sortedVideos = _sortVideos(filteredVideos, sortMode, _randomKey);
+              final sortedVideos = sortVideos(filteredVideos, sortMode, randomKey: _randomKey, separateFavorites: true);
               return VideoGrid(
                 videos: sortedVideos,
                 viewMode: viewMode,
@@ -162,7 +161,7 @@ class _MediaPageState extends ConsumerState<MediaPage> {
   Widget _buildViewModeButton(ViewMode current) {
     return PopupMenuButton<ViewMode>(
       tooltip: '视图模式',
-      icon: Icon(_getViewModeIcon(current), color: AppTheme.textSecondary),
+      icon: Icon(getViewModeIcon(current), color: AppTheme.textSecondary),
       onSelected: (value) {
         ref.read(viewModeProvider.notifier).state = value;
         ref.read(sharedPreferencesProvider).setInt('view_mode', value.index);
@@ -174,19 +173,6 @@ class _MediaPageState extends ConsumerState<MediaPage> {
         PopupMenuItem(value: ViewMode.posterWall, child: Text('海报墙')),
       ],
     );
-  }
-
-  IconData _getViewModeIcon(ViewMode mode) {
-    switch (mode) {
-      case ViewMode.list:
-        return Icons.view_list;
-      case ViewMode.poster:
-        return Icons.grid_view;
-      case ViewMode.posterWithTitle:
-        return Icons.grid_on;
-      case ViewMode.posterWall:
-        return Icons.wallpaper;
-    }
   }
 
   Widget _buildColumnCountControl() {
@@ -282,52 +268,6 @@ class _MediaPageState extends ConsumerState<MediaPage> {
     } finally {
       if (mounted) setState(() => _isScanning = false);
     }
-  }
-
-  List<Video> _sortVideos(List<Video> videos, SortMode mode, [int randomKey = 0]) {
-    final sorted = List<Video>.from(videos);
-    if (randomKey > 0) {
-      sorted.shuffle(Random(randomKey));
-      return sorted;
-    }
-
-    final favorites = sorted.where((v) => v.isFavorite).toList();
-    final nonFavorites = sorted.where((v) => !v.isFavorite).toList();
-
-    void applySort(List<Video> list) {
-      switch (mode) {
-        case SortMode.titleAsc:
-          list.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));
-          break;
-        case SortMode.titleDesc:
-          list.sort((a, b) => (b.title ?? '').compareTo(a.title ?? ''));
-          break;
-        case SortMode.random:
-          list.shuffle(Random());
-          break;
-        case SortMode.recentlyWatchedAsc:
-          list.sort((a, b) {
-            if (a.lastWatchedTime == null && b.lastWatchedTime == null) return 0;
-            if (a.lastWatchedTime == null) return -1;
-            if (b.lastWatchedTime == null) return 1;
-            return a.lastWatchedTime!.compareTo(b.lastWatchedTime!);
-          });
-          break;
-        case SortMode.recentlyWatchedDesc:
-          list.sort((a, b) {
-            if (a.lastWatchedTime == null && b.lastWatchedTime == null) return 0;
-            if (a.lastWatchedTime == null) return 1;
-            if (b.lastWatchedTime == null) return -1;
-            return b.lastWatchedTime!.compareTo(a.lastWatchedTime!);
-          });
-          break;
-      }
-    }
-
-    applySort(favorites);
-    applySort(nonFavorites);
-
-    return [...favorites, ...nonFavorites];
   }
 
   void _showVideoDetail(Video video) {

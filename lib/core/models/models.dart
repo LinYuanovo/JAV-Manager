@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 enum ViewMode {
   poster,
   posterWithTitle,
@@ -151,26 +153,27 @@ class Actor {
   });
 
   factory Actor.fromMap(Map<String, dynamic> map) {
+    Map<String, dynamic>? parsedInfo;
+    final infoRaw = map['info_json'] as String?;
+    if (infoRaw != null && infoRaw.isNotEmpty) {
+      try {
+        parsedInfo = Map<String, dynamic>.from(jsonDecode(infoRaw));
+      } catch (_) {
+        // Legacy format: try custom parser
+        try {
+          parsedInfo = _parseLegacyInfoJson(infoRaw);
+        } catch (_) {
+          parsedInfo = null;
+        }
+      }
+    }
+
     return Actor(
       id: map['id'] as int?,
       name: map['name'] as String,
       avatarUrl: map['avatar_url'] as String?,
       isFavorite: (map['is_favorite'] as int? ?? 0) == 1,
-      infoJson: map['info_json'] != null
-          ? Map<String, dynamic>.from(
-              (map['info_json'] as String).isNotEmpty
-                  ? Map<String, dynamic>.from(
-                      (map['info_json'] as String).isNotEmpty
-                          ? Map<String, dynamic>.from(
-                              (map['info_json'] as String).isNotEmpty
-                                  ? _parseJson(map['info_json'] as String)
-                                  : {},
-                            )
-                          : {},
-                        )
-                  : {},
-            )
-          : null,
+      infoJson: parsedInfo,
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'] as String)
           : null,
@@ -178,47 +181,17 @@ class Actor {
     );
   }
 
-  static Map<String, dynamic> _parseJson(String json) {
-    try {
-      return Map<String, dynamic>.from(
-        (json.isNotEmpty) ? _decodeJson(json) : {},
-      );
-    } catch (_) {
-      return {};
-    }
-  }
-
-  static Map<String, dynamic> _decodeJson(String json) {
-    return Map<String, dynamic>.from(
-      json.isNotEmpty
-          ? (json.startsWith('{')
-              ? _parseJsonMap(json)
-              : <String, dynamic>{})
-          : <String, dynamic>{},
-    );
-  }
-
-  static Map<String, dynamic> _parseJsonMap(String json) {
-    try {
-      return Map<String, dynamic>.from(
-        (json.isNotEmpty) ? _stringToMap(json) : {},
-      );
-    } catch (_) {
-      return {};
-    }
-  }
-
-  static Map<String, dynamic> _stringToMap(String json) {
+  /// Parse legacy custom-format info_json (not standard JSON).
+  /// Only used for backwards compatibility during migration.
+  static Map<String, dynamic> _parseLegacyInfoJson(String json) {
     final result = <String, dynamic>{};
     if (json.isEmpty || json == '{}') return result;
-
     final content = json.substring(1, json.length - 1);
     if (content.isEmpty) return result;
 
     final pairs = <String>[];
     var depth = 0;
     var current = StringBuffer();
-
     for (var i = 0; i < content.length; i++) {
       final char = content[i];
       if (char == '{' || char == '[') depth++;
@@ -235,16 +208,12 @@ class Actor {
     for (final pair in pairs) {
       final colonIndex = pair.indexOf(':');
       if (colonIndex == -1) continue;
-
       var key = pair.substring(0, colonIndex).trim();
       var value = pair.substring(colonIndex + 1).trim();
-
       key = _unquote(key);
       value = _unquote(value);
-
       if (value.isNotEmpty) result[key] = value;
     }
-
     return result;
   }
 
@@ -263,15 +232,8 @@ class Actor {
       'name': name,
       'avatar_url': avatarUrl,
       'is_favorite': isFavorite ? 1 : 0,
-      'info_json': infoJson != null ? _mapToJson(infoJson!) : null,
+      'info_json': infoJson != null ? jsonEncode(infoJson) : null,
     };
-  }
-
-  static String _mapToJson(Map<String, dynamic> map) {
-    final entries = map.entries
-        .map((e) => '"${e.key}":"${e.value}"')
-        .join(',');
-    return '{$entries}';
   }
 
   Actor copyWith({

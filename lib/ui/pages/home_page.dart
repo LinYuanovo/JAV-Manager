@@ -3,7 +3,6 @@ import 'dart:io';
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 import '../../core/providers/providers.dart';
@@ -1066,39 +1065,59 @@ class _VideoListItem extends StatelessWidget {
   }
 }
 
-List<Video> sortVideos(List<Video> videos, SortMode mode, [int randomKey = 0]) {
+List<Video> sortVideos(List<Video> videos, SortMode mode, {int randomKey = 0, bool separateFavorites = false}) {
   final sorted = List<Video>.from(videos);
+
+  void applySort(List<Video> list) {
+    switch (mode) {
+      case SortMode.titleAsc:
+        list.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));
+        break;
+      case SortMode.titleDesc:
+        list.sort((a, b) => (b.title ?? '').compareTo(a.title ?? ''));
+        break;
+      case SortMode.random:
+        list.shuffle(Random());
+        break;
+      case SortMode.recentlyWatchedAsc:
+        list.sort((a, b) {
+          if (a.lastWatchedTime == null && b.lastWatchedTime == null) return 0;
+          if (a.lastWatchedTime == null) return -1;
+          if (b.lastWatchedTime == null) return 1;
+          return a.lastWatchedTime!.compareTo(b.lastWatchedTime!);
+        });
+        break;
+      case SortMode.recentlyWatchedDesc:
+        list.sort((a, b) {
+          if (a.lastWatchedTime == null && b.lastWatchedTime == null) return 0;
+          if (a.lastWatchedTime == null) return 1;
+          if (b.lastWatchedTime == null) return -1;
+          return b.lastWatchedTime!.compareTo(a.lastWatchedTime!);
+        });
+        break;
+    }
+  }
+
+  if (separateFavorites) {
+    final favs = sorted.where((v) => v.isFavorite).toList();
+    final nonFavs = sorted.where((v) => !v.isFavorite).toList();
+
+    if (randomKey > 0) {
+      favs.shuffle(Random(randomKey));
+      nonFavs.shuffle(Random(randomKey * 31 + 7));
+      return [...favs, ...nonFavs];
+    }
+
+    applySort(favs);
+    applySort(nonFavs);
+    return [...favs, ...nonFavs];
+  }
+
   if (randomKey > 0) {
     sorted.shuffle(Random(randomKey));
     return sorted;
   }
-  switch (mode) {
-    case SortMode.titleAsc:
-      sorted.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));
-      break;
-    case SortMode.titleDesc:
-      sorted.sort((a, b) => (b.title ?? '').compareTo(a.title ?? ''));
-      break;
-    case SortMode.random:
-      sorted.shuffle(Random());
-      break;
-    case SortMode.recentlyWatchedAsc:
-      sorted.sort((a, b) {
-        if (a.lastWatchedTime == null && b.lastWatchedTime == null) return 0;
-        if (a.lastWatchedTime == null) return -1;
-        if (b.lastWatchedTime == null) return 1;
-        return a.lastWatchedTime!.compareTo(b.lastWatchedTime!);
-      });
-      break;
-    case SortMode.recentlyWatchedDesc:
-      sorted.sort((a, b) {
-        if (a.lastWatchedTime == null && b.lastWatchedTime == null) return 0;
-        if (a.lastWatchedTime == null) return 1;
-        if (b.lastWatchedTime == null) return -1;
-        return b.lastWatchedTime!.compareTo(a.lastWatchedTime!);
-      });
-      break;
-  }
-  
+
+  applySort(sorted);
   return sorted;
 }

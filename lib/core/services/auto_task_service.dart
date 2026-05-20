@@ -87,7 +87,7 @@ class AutoTaskService {
     try {
       await _mediaScannerService.scanMediaLibrary(path);
     } catch (e) {
-      // Log error
+      debugPrint('[AutoTask] Scan error: $e');
     }
   }
 
@@ -142,7 +142,7 @@ class AutoTaskService {
             try {
               final actorDirName = path.basename(path.dirname(video.folderPath));
               final episodeDirName = path.basename(video.folderPath);
-              final newFolderPath = path.join(watchedFolder!, actorDirName, episodeDirName);
+              final newFolderPath = path.join(watchedFolder, actorDirName, episodeDirName);
               await _videoRepository.updateVideo(video.copyWith(
                 isWatched: true,
                 folderPath: newFolderPath,

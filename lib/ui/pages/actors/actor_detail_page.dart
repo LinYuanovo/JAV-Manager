@@ -1,6 +1,4 @@
 import 'dart:io';
-import 'dart:math';
-import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,6 +8,7 @@ import '../../../core/models/models.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/utils/proxy_client.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/actor_avatar.dart';
 import '../home_page.dart';
 import '../media/video_detail_dialog.dart';
 
@@ -89,7 +88,9 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
           _actor = updatedActor ?? _actor.copyWith(infoJson: info);
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Failed to fetch actor info: $e');
+    }
 
     if (!mounted) return;
     setState(() {
@@ -229,7 +230,12 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
                   child: Stack(
                     children: [
                       ClipOval(
-                        child: _buildAvatar(),
+                        child: ActorAvatar(
+                          key: ValueKey(_avatarKey),
+                          avatarUrl: _actor.avatarUrl,
+                          name: _actor.name,
+                          placeholderFontSize: 64,
+                        ),
                       ),
                       Positioned(
                         top: 8,
@@ -286,48 +292,6 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
                 const SizedBox(height: 32),
                 _buildInfoCard(),
               ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAvatar() {
-    if (_actor.avatarUrl != null && _actor.avatarUrl!.isNotEmpty) {
-      final file = File(_actor.avatarUrl!);
-      return FutureBuilder<Uint8List>(
-        future: file.readAsBytes(),
-        builder: (context, snapshot) {
-          if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
-            return Image.memory(
-              snapshot.data!,
-              key: ValueKey(_avatarKey),
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return _buildPlaceholder();
-              },
-            );
-          }
-          return _buildPlaceholder();
-        },
-      );
-    }
-    return _buildPlaceholder();
-  }
-
-  Widget _buildPlaceholder() {
-    return Container(
-      color: AppTheme.cardColor,
-      child: Center(
-        child: ShaderMask(
-          shaderCallback: (bounds) => AppTheme.primaryGradient.createShader(bounds),
-          child: Text(
-            _actor.name.substring(0, 1).toUpperCase(),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 64,
-              fontWeight: FontWeight.bold,
             ),
           ),
         ),
@@ -488,7 +452,7 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
               const SizedBox(width: 8),
               PopupMenuButton<ViewMode>(
                 tooltip: '视图模式',
-                icon: Icon(_getViewModeIcon(_viewMode), color: AppTheme.textSecondary),
+                icon: Icon(getViewModeIcon(_viewMode), color: AppTheme.textSecondary),
                 onSelected: (v) async {
                   setState(() => _viewMode = v);
                   final prefs = ref.read(sharedPreferencesProvider);
@@ -519,7 +483,7 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
                   ),
                 );
               }
-              final sorted = _sortVideos(videos, _sortMode);
+              final sorted = sortVideos(videos, _sortMode, separateFavorites: true);
               return VideoGrid(
                 videos: sorted,
                 viewMode: _viewMode,
@@ -535,42 +499,6 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
         ),
       ],
     );
-  }
-
-  IconData _getViewModeIcon(ViewMode mode) {
-    switch (mode) {
-      case ViewMode.list: return Icons.view_list;
-      case ViewMode.poster: return Icons.grid_view;
-      case ViewMode.posterWithTitle: return Icons.grid_on;
-      case ViewMode.posterWall: return Icons.wallpaper;
-    }
-  }
-
-  List<Video> _sortVideos(List<Video> videos, SortMode mode) {
-    final sorted = List<Video>.from(videos);
-    switch (mode) {
-      case SortMode.titleAsc:
-        sorted.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));
-        break;
-      case SortMode.titleDesc:
-        sorted.sort((a, b) => (b.title ?? '').compareTo(a.title ?? ''));
-        break;
-      case SortMode.random:
-        sorted.shuffle(Random());
-        break;
-      case SortMode.recentlyWatchedAsc:
-      case SortMode.recentlyWatchedDesc:
-        sorted.sort((a, b) {
-          if (a.lastWatchedTime == null && b.lastWatchedTime == null) return 0;
-          if (a.lastWatchedTime == null) return -1;
-          if (b.lastWatchedTime == null) return 1;
-          return mode == SortMode.recentlyWatchedDesc
-              ? b.lastWatchedTime!.compareTo(a.lastWatchedTime!)
-              : a.lastWatchedTime!.compareTo(b.lastWatchedTime!);
-        });
-        break;
-    }
-    return sorted;
   }
 
   void _showVideoDetail(Video video) {
@@ -728,6 +656,9 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
         final safeName = _actor.name.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
         final filePath = path.join(dirPath, '$safeName.jpg');
         await File(filePath).writeAsBytes(response.bodyBytes);
+
+        // Clear image cache so Image.file re-decodes the new file
+        ActorAvatar.evictCache(filePath);
 
         final actorRepo = ref.read(actorRepositoryProvider);
         await actorRepo.updateActorAvatar(_actor.id!, filePath);

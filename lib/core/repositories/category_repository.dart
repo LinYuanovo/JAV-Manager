@@ -137,7 +137,7 @@ class CategoryRepository {
   }
 
   Future<int> insertCategoryIfNotExists(Category category) async {
-    final existing = await getCategoryByNameAndType(category.name ?? '', category.type ?? '');
+    final existing = await getCategoryByNameAndType(category.name, category.type);
     if (existing != null) return existing.id!;
     return await insertCategory(category);
   }

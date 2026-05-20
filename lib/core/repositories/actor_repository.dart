@@ -84,7 +84,7 @@ class ActorRepository {
   }
 
   Future<int> insertActorIfNotExists(Actor actor) async {
-    final existing = await getActorByName(actor.name ?? '');
+    final existing = await getActorByName(actor.name);
     if (existing != null) return existing.id!;
     return await insertActor(actor);
   }

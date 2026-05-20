@@ -11,6 +11,11 @@ class DatabaseHelper {
     return File(Platform.resolvedExecutable).parent.path;
   }
 
+  static Future<String> getDatabasePath() async {
+    final appDir = await getAppDir();
+    return join(appDir, _databaseName);
+  }
+
   static Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDatabase();

@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -81,7 +80,7 @@ class _CategoryVideosPageState extends ConsumerState<CategoryVideosPage> {
                     ),
                   );
                 }
-                final sorted = _sortVideos(videos, _sortMode);
+                final sorted = sortVideos(videos, _sortMode, separateFavorites: true);
                 return VideoGrid(
                   videos: sorted,
                   viewMode: _viewMode,
@@ -174,7 +173,7 @@ class _CategoryVideosPageState extends ConsumerState<CategoryVideosPage> {
           const SizedBox(width: 8),
           PopupMenuButton<ViewMode>(
             tooltip: '视图模式',
-            icon: Icon(_getViewModeIcon(_viewMode), color: AppTheme.textSecondary),
+            icon: Icon(getViewModeIcon(_viewMode), color: AppTheme.textSecondary),
             onSelected: (v) async {
               setState(() => _viewMode = v);
               final prefs = ref.read(sharedPreferencesProvider);
@@ -198,15 +197,6 @@ class _CategoryVideosPageState extends ConsumerState<CategoryVideosPage> {
         ],
       ),
     );
-  }
-
-  IconData _getViewModeIcon(ViewMode mode) {
-    switch (mode) {
-      case ViewMode.list: return Icons.view_list;
-      case ViewMode.poster: return Icons.grid_view;
-      case ViewMode.posterWithTitle: return Icons.grid_on;
-      case ViewMode.posterWall: return Icons.wallpaper;
-    }
   }
 
   Widget _buildColumnCountControl() {
@@ -254,38 +244,6 @@ class _CategoryVideosPageState extends ConsumerState<CategoryVideosPage> {
         ),
       ],
     );
-  }
-
-  List<Video> _sortVideos(List<Video> videos, SortMode mode) {
-    final sorted = List<Video>.from(videos);
-    switch (mode) {
-      case SortMode.titleAsc:
-        sorted.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));
-        break;
-      case SortMode.titleDesc:
-        sorted.sort((a, b) => (b.title ?? '').compareTo(a.title ?? ''));
-        break;
-      case SortMode.random:
-        sorted.shuffle(Random());
-        break;
-      case SortMode.recentlyWatchedAsc:
-        sorted.sort((a, b) {
-          if (a.lastWatchedTime == null && b.lastWatchedTime == null) return 0;
-          if (a.lastWatchedTime == null) return -1;
-          if (b.lastWatchedTime == null) return 1;
-          return a.lastWatchedTime!.compareTo(b.lastWatchedTime!);
-        });
-        break;
-      case SortMode.recentlyWatchedDesc:
-        sorted.sort((a, b) {
-          if (a.lastWatchedTime == null && b.lastWatchedTime == null) return 0;
-          if (a.lastWatchedTime == null) return 1;
-          if (b.lastWatchedTime == null) return -1;
-          return b.lastWatchedTime!.compareTo(a.lastWatchedTime!);
-        });
-        break;
-    }
-    return sorted;
   }
 
   void _showVideoDetail(Video video) {

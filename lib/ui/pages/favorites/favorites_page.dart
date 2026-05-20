@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'dart:math';
 import '../../../core/providers/providers.dart';
 import '../../../core/models/models.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/actor_avatar.dart';
 import '../home_page.dart';
 import '../media/video_detail_dialog.dart';
 import '../actors/actor_detail_page.dart';
@@ -162,7 +160,7 @@ class _FavoriteVideosTab extends ConsumerWidget {
           ).toList();
         }
 
-        filtered = _sortVideos(filtered, sortMode);
+        filtered = sortVideos(filtered, sortMode, separateFavorites: true);
 
         if (filtered.isEmpty) {
           return _buildEmptyState(
@@ -196,40 +194,6 @@ class _FavoriteVideosTab extends ConsumerWidget {
     );
   }
 
-  List<Video> _sortVideos(List<Video> videos, SortMode mode) {
-    final sorted = List<Video>.from(videos);
-
-    switch (mode) {
-      case SortMode.titleAsc:
-        sorted.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));
-        break;
-      case SortMode.titleDesc:
-        sorted.sort((a, b) => (b.title ?? '').compareTo(a.title ?? ''));
-        break;
-      case SortMode.random:
-        sorted.shuffle(Random());
-        break;
-      case SortMode.recentlyWatchedAsc:
-        sorted.sort((a, b) {
-          if (a.lastWatchedTime == null && b.lastWatchedTime == null) return 0;
-          if (a.lastWatchedTime == null) return -1;
-          if (b.lastWatchedTime == null) return 1;
-          return a.lastWatchedTime!.compareTo(b.lastWatchedTime!);
-        });
-        break;
-      case SortMode.recentlyWatchedDesc:
-        sorted.sort((a, b) {
-          if (a.lastWatchedTime == null && b.lastWatchedTime == null) return 0;
-          if (a.lastWatchedTime == null) return 1;
-          if (b.lastWatchedTime == null) return -1;
-          return b.lastWatchedTime!.compareTo(a.lastWatchedTime!);
-        });
-        break;
-    }
-
-    return sorted;
-  }
-
   Widget _buildToolbar(BuildContext context, ViewMode viewMode, SortMode sortMode, WidgetRef ref, List<Video> filtered) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -254,7 +218,7 @@ class _FavoriteVideosTab extends ConsumerWidget {
           const SizedBox(width: 12),
           PopupMenuButton<ViewMode>(
             tooltip: '视图模式',
-            icon: Icon(_getViewModeIcon(viewMode), color: AppTheme.textSecondary, size: 20),
+            icon: Icon(getViewModeIcon(viewMode), color: AppTheme.textSecondary, size: 20),
             onSelected: (value) {
               ref.read(favoriteViewModeProvider.notifier).state = value;
               final prefs = ref.read(sharedPreferencesProvider);
@@ -275,15 +239,6 @@ class _FavoriteVideosTab extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  IconData _getViewModeIcon(ViewMode mode) {
-    switch (mode) {
-      case ViewMode.list: return Icons.view_list;
-      case ViewMode.poster: return Icons.grid_view;
-      case ViewMode.posterWithTitle: return Icons.grid_on;
-      case ViewMode.posterWall: return Icons.wallpaper;
-    }
   }
 
   Widget _buildEmptyState({required IconData icon, required String message}) {
@@ -670,7 +625,10 @@ class _ActorCardState extends State<_ActorCard>
                         ],
                       ),
                       child: ClipOval(
-                        child: _buildAvatar(),
+                        child: ActorAvatar(
+                          avatarUrl: widget.actor.avatarUrl,
+                          name: widget.actor.name,
+                        ),
                       ),
                     ),
                   ),
@@ -688,46 +646,6 @@ class _ActorCardState extends State<_ActorCard>
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAvatar() {
-    if (widget.actor.avatarUrl != null && widget.actor.avatarUrl!.isNotEmpty) {
-      final file = File(widget.actor.avatarUrl!);
-      return FutureBuilder<Uint8List>(
-        future: file.readAsBytes(),
-        builder: (context, snapshot) {
-          if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
-            return Image.memory(
-              snapshot.data!,
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-              errorBuilder: (context, error, stackTrace) {
-                return _buildPlaceholder();
-              },
-            );
-          }
-          return _buildPlaceholder();
-        },
-      );
-    }
-    return _buildPlaceholder();
-  }
-
-  Widget _buildPlaceholder() {
-    return Container(
-      color: AppTheme.cardColor,
-      child: Center(
-        child: Text(
-          widget.actor.name.substring(0, 1).toUpperCase(),
-          style: const TextStyle(
-            color: AppTheme.accentColor,
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
           ),
         ),
       ),

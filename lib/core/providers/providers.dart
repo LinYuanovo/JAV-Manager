@@ -8,6 +8,7 @@ import '../services/media_scanner_service.dart';
 import '../services/wikipedia_service.dart';
 import '../services/auto_task_service.dart';
 import '../services/avatar_service.dart';
+import '../services/webdav_service.dart';
 import '../models/models.dart';
 
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
@@ -51,6 +52,10 @@ final avatarServiceProvider = Provider<AvatarService>((ref) {
   return AvatarService(
     actorRepository: ref.watch(actorRepositoryProvider),
   );
+});
+
+final webdavServiceProvider = Provider<WebdavService>((ref) {
+  return WebdavService();
 });
 
 final allVideosProvider = FutureProvider<List<Video>>((ref) async {

@@ -45,7 +45,7 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
                     .toList();
               }
 
-              filteredVideos = _sortVideos(filteredVideos, _sortMode);
+              filteredVideos = sortVideos(filteredVideos, _sortMode);
 
               if (filteredVideos.isEmpty) {
                 return Center(
@@ -135,7 +135,7 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
           const SizedBox(width: 8),
           PopupMenuButton<ViewMode>(
             tooltip: '视图模式',
-            icon: Icon(_getViewModeIcon(_viewMode), color: AppTheme.textSecondary),
+            icon: Icon(getViewModeIcon(_viewMode), color: AppTheme.textSecondary),
             onSelected: (v) => setState(() => _viewMode = v),
             itemBuilder: (_) => const [
               PopupMenuItem(value: ViewMode.list, child: Text('列表')),
@@ -211,56 +211,12 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
     );
   }
 
-  IconData _getViewModeIcon(ViewMode mode) {
-    switch (mode) {
-      case ViewMode.list:
-        return Icons.view_list;
-      case ViewMode.poster:
-        return Icons.grid_view;
-      case ViewMode.posterWithTitle:
-        return Icons.grid_on;
-      case ViewMode.posterWall:
-        return Icons.wallpaper;
-    }
-  }
-
   Future<void> _toggleFavorite(Video video) async {
     final repository = ref.read(videoRepositoryProvider);
     await repository.toggleFavorite(video.id!, !video.isFavorite);
     ref.invalidate(watchedVideosProvider);
     ref.invalidate(allVideosProvider);
     ref.invalidate(favoriteVideosProvider);
-  }
-
-  List<Video> _sortVideos(List<Video> videos, SortMode mode) {
-    final sorted = List<Video>.from(videos);
-    switch (mode) {
-      case SortMode.titleAsc:
-        sorted.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));
-        break;
-      case SortMode.titleDesc:
-        sorted.sort((a, b) => (b.title ?? '').compareTo(a.title ?? ''));
-        break;
-      case SortMode.recentlyWatchedAsc:
-        sorted.sort((a, b) {
-          if (a.lastWatchedTime == null && b.lastWatchedTime == null) return 0;
-          if (a.lastWatchedTime == null) return -1;
-          if (b.lastWatchedTime == null) return 1;
-          return a.lastWatchedTime!.compareTo(b.lastWatchedTime!);
-        });
-        break;
-      case SortMode.recentlyWatchedDesc:
-        sorted.sort((a, b) {
-          if (a.lastWatchedTime == null && b.lastWatchedTime == null) return 0;
-          if (a.lastWatchedTime == null) return 1;
-          if (b.lastWatchedTime == null) return -1;
-          return b.lastWatchedTime!.compareTo(a.lastWatchedTime!);
-        });
-        break;
-      default:
-        break;
-    }
-    return sorted;
   }
 
   void _showVideoDetail(video) {

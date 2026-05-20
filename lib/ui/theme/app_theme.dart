@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import '../../core/models/models.dart';
 
 // ===== 统一常量 =====
 class GlassConstants {
@@ -800,4 +801,63 @@ void showCopyToast(BuildContext context, String text) {
   Timer(const Duration(seconds: 1, milliseconds: 500), () {
     overlayEntry.remove();
   });
+}
+
+// ===== 视图模式图标辅助函数 =====
+IconData getViewModeIcon(ViewMode mode) => switch (mode) {
+  ViewMode.list       => Icons.view_list,
+  ViewMode.poster     => Icons.grid_view,
+  ViewMode.posterWithTitle => Icons.grid_on,
+  ViewMode.posterWall => Icons.wallpaper,
+};
+
+// ===== 空状态占位组件 =====
+class EmptyStateWidget extends StatelessWidget {
+  final IconData icon;
+  final String message;
+  final String? subMessage;
+  final Widget? action;
+
+  const EmptyStateWidget({
+    super.key,
+    required this.icon,
+    required this.message,
+    this.subMessage,
+    this.action,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 64, color: AppTheme.textSecondary.withValues(alpha: 0.4)),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: TextStyle(
+              color: AppTheme.textSecondary.withValues(alpha: 0.6),
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          if (subMessage != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              subMessage!,
+              style: TextStyle(
+                color: AppTheme.textSecondary.withValues(alpha: 0.4),
+                fontSize: 13,
+              ),
+            ),
+          ],
+          if (action != null) ...[
+            const SizedBox(height: 20),
+            action!,
+          ],
+        ],
+      ),
+    );
+  }
 }

@@ -215,6 +215,7 @@ class MediaScannerService {
       await _processVideoFile(videoPath, existingVideoOverride: existingVideo);
       return true;
     } catch (e) {
+      debugPrint('[Scan] Error processing file $videoPath: $e');
       return false;
     }
   }
@@ -236,8 +237,6 @@ class MediaScannerService {
       final existingVideo = existingVideoOverride ?? await _videoRepository.getVideoByPath(videoPath);
 
       if (existingVideo != null && nfoData == null) {
-        final videoFile = File(videoPath);
-        final videoModified = await videoFile.lastModified();
         if (existingVideo.nfoPath == null || !await File(existingVideo.nfoPath!).exists()) {
           String? poster = null;
           if (await File(posterPath).exists()) {
