@@ -1,12 +1,13 @@
-# <center><img src="app_icon.png" alt="JAV-Manager" width="60" height="60"> &nbsp;JAV-Manager</center>
+<h1 align="center"><img src="app_icon.png" alt="JAV-Manager" width="60" height="60"> &nbsp;JAV-Manager</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Flutter-3.41+-02569B?style=flat-square&logo=flutter" alt="Flutter">
-  <img src="https://img.shields.io/badge/Dart-3.11+-0175C2?style=flat-square&logo=dart" alt="Dart">
-  <img src="https://img.shields.io/badge/Platform-Windows-0078D6?style=flat-square&logo=windows" alt="Windows">
-  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
-  <img src="https://img.shields.io/badge/Version-1.3.0-blue?style=flat-square" alt="Version">
-
+  <nobr>
+    <img src="https://img.shields.io/badge/Flutter-3.41+-02569B?style=flat-square&logo=flutter" alt="Flutter">
+    <img src="https://img.shields.io/badge/Dart-3.11+-0175C2?style=flat-square&logo=dart" alt="Dart">
+    <img src="https://img.shields.io/badge/Platform-Windows-0078D6?style=flat-square&logo=windows" alt="Windows">
+    <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
+    <img src="https://img.shields.io/badge/Version-1.3.0-blue?style=flat-square" alt="Version">
+  </nobr>
 </p>
 
 <p align="center">
@@ -15,6 +16,99 @@
 </p>
 
 ***
+
+## 🚀 快速开始
+
+### 环境要求
+
+<details>
+  <summary>点击展开查看环境要求</summary>
+  - **Flutter SDK**: >= 3.41.9
+  - **Dart SDK**: >= 3.11.5
+  - **操作系统**: Windows 10/11 (64位)
+  - **内存**: 建议 8GB+
+  - **磁盘空间**: 2GB+ (用于构建)
+</details>
+
+### 安装步骤
+
+#### 直接使用
+
+Windows系统在[releases](https://github.com/LinYuanovo/JAV-Manager/releases)页面直接下载zip压缩包后**解压**即可使用
+
+#### 自行构建
+<details>
+  <summary>点击展开查看自行构建方式</summary>
+  1. **克隆仓库**
+   
+   ```bash
+   git clone https://github.com/LinYuanovo/JAV-Manager.git
+   cd JAV-Manager
+   ```
+  2. **安装依赖**
+    ```bash
+    flutter pub get
+    ```
+  3. **运行应用（开发模式）**
+    ```bash
+    flutter run -d windows
+    ```
+  4. **构建发布版本**
+    ```bash
+    flutter build windows --release
+    ```
+    可执行文件位于：
+    ```
+    build/windows/x64/runner/Release/jav_manager.exe
+    ```
+</details>
+
+## 📂 媒体库目录结构
+
+应用期望以下目录结构（[如何得到？JavSP刮削](https://github.com/Yuukiy/JavSP)）来正确识别和管理视频：
+
+```
+媒体库根目录/
+├── #整理完成/                    # 主媒体库
+│   ├── 演员名/
+│   │   └── [番号] 视频标题/
+│   │       ├── poster.jpg        # 海报图 (必需)
+│   │       ├── fanart.jpg        # 背景图 (可选)
+│   │       ├── movie.nfo         # 元数据文件 (必需)
+│   │       └── 视频文件.mp4      # 视频文件
+│   └── 演员2,演员3/              # 多演员用逗号分隔
+│
+└── Watched/                      # 已观看目录 (可在设置中自定义路径)
+   └── ...
+```
+
+### NFO 文件格式示例
+
+应用通过解析 `movie.nfo` 文件提取视频元数据：
+
+```xml
+<movie>
+  <title>视频标题</title>
+  <originaltitle>原始标题</originaltitle>
+  <actor>
+    <name>演员名</name>
+  </actor>
+  <genre>标签1</genre>
+  <genre>标签2</genre>
+  <set>系列名</set>
+  <studio>片商名</studio>
+  <plot>剧情简介...</plot>
+  <premiered>2024-01-01</premiered>
+</movie>
+```
+
+**关键字段说明：**
+
+- `<actor><name>` - 提取演员名称
+- `<genre>` - 提取标签分类
+- `<set>` - 提取系列分类
+- `<studio>` - 提取片商分类
+- `<title>` - 显示标题
 
 ## ✨ 功能特性
 
@@ -117,94 +211,6 @@ JAV-Manager/
 ```
 
 </details>
-
-## 🚀 快速开始
-
-### 环境要求
-
-- **Flutter SDK**: >= 3.41.9
-- **Dart SDK**: >= 3.11.5
-- **操作系统**: Windows 10/11 (64位)
-- **内存**: 建议 8GB+
-- **磁盘空间**: 2GB+ (用于构建)
-
-### 安装步骤
-
-#### 直接使用
-
-在[releases](https://github.com/LinYuanovo/JAV-Manager/releases)页面直接下载zip压缩包后**解压**即可使用
-
-#### 自行构建
-
-1. **克隆仓库**
-   
-   ```bash
-   git clone https://github.com/LinYuanovo/JAV-Manager.git
-   cd JAV-Manager
-   ```
-2. **安装依赖**
-   ```bash
-   flutter pub get
-   ```
-3. **运行应用（开发模式）**
-   ```bash
-   flutter run -d windows
-   ```
-4. **构建发布版本**
-   ```bash
-   flutter build windows --release
-   ```
-   可执行文件位于：
-   ```
-   build/windows/x64/runner/Release/jav_manager.exe
-   ```
-
-## 📂 媒体库目录结构
-
-应用期望以下目录结构（[如何得到？](https://github.com/Yuukiy/JavSP)）来正确识别和管理视频：
-
-```
-媒体库根目录/
-├── #整理完成/                    # 主媒体库
-│   ├── 演员名/
-│   │   └── [番号] 视频标题/
-│   │       ├── poster.jpg        # 海报图 (必需)
-│   │       ├── fanart.jpg        # 背景图 (可选)
-│   │       ├── movie.nfo         # 元数据文件 (必需)
-│   │       └── 视频文件.mp4      # 视频文件
-│   └── 演员2,演员3/              # 多演员用逗号分隔
-│
-└── Watched/                      # 已观看目录 (可在设置中自定义路径)
-   └── ...
-```
-
-### NFO 文件格式示例
-
-应用通过解析 `movie.nfo` 文件提取视频元数据：
-
-```xml
-<movie>
-  <title>视频标题</title>
-  <originaltitle>原始标题</originaltitle>
-  <actor>
-    <name>演员名</name>
-  </actor>
-  <genre>标签1</genre>
-  <genre>标签2</genre>
-  <set>系列名</set>
-  <studio>片商名</studio>
-  <plot>剧情简介...</plot>
-  <premiered>2024-01-01</premiered>
-</movie>
-```
-
-**关键字段说明：**
-
-- `<actor><name>` - 提取演员名称
-- `<genre>` - 提取标签分类
-- `<set>` - 提取系列分类
-- `<studio>` - 提取片商分类
-- `<title>` - 显示标题
 
 ## 🙏 致谢
 
