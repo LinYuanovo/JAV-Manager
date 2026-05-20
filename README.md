@@ -1,4 +1,4 @@
-<h1 align="center"><img src="app_icon.png" alt="JAV-Manager" width="60" height="60" align="middle"> &nbsp;JAV-Manager</h1>
+<h1 align="center"><img src="app_icon.png" alt="JAV-Manager" width="56" height="56" style="vertical-align: middle"> &nbsp;JAV-Manager</h1>
 
 <p align="center">
   <nobr>
