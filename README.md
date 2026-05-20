@@ -1,10 +1,5 @@
 <p align="center">
-  <table>
-    <tr>
-      <td style="border:none; padding-right:4px"><img src="app_icon.png" alt="JAV-Manager" width="60" height="60"></td>
-      <td style="border:none; font-size:32px">JAV-Manager</td>
-    </tr>
-  </table>
+  <img src="app_icon.png" alt="JAV-Manager" width="60" height="60" style="vertical-align:middle"> &nbsp;<span style="font-size:36px;font-weight:bold;vertical-align:middle">JAV-Manager</span>
 </p>
 
 <p align="center">
