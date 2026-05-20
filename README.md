@@ -1,4 +1,4 @@
-# JAV-Manager
+# <center><img src="app_icon.png" alt="JAV-Manager" width="60" height="60"> &nbsp;JAV-Manager</center>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Flutter-3.41+-02569B?style=flat-square&logo=flutter" alt="Flutter">
@@ -6,6 +6,7 @@
   <img src="https://img.shields.io/badge/Platform-Windows-0078D6?style=flat-square&logo=windows" alt="Windows">
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
   <img src="https://img.shields.io/badge/Version-1.3.0-blue?style=flat-square" alt="Version">
+
 </p>
 
 <p align="center">
@@ -23,8 +24,12 @@
 - **灵活排序**：标题、随机、最近观看
 - **自适应网格布局**，支持固定列数
 - **手动/自动扫描**媒体库，实时更新
-- **搜索防抖**：输入时智能延迟查询
 - **纯净模式**：仅显示番号，海报图马赛克处理
+
+<figure class="half">
+  <img src="https://raw.githubusercontent.com/LinYuanovo/pic_bed/refs/heads/main/JAV-Manager/media_page.png" title="media_page"/> 
+  <img src="https://raw.githubusercontent.com/LinYuanovo/pic_bed/refs/heads/main/JAV-Manager/video_detail_page.png" title="video_detail_page"/> 
+</figure>
 
 ### 👤 演员管理
 
@@ -33,12 +38,26 @@
 - **详细信息**：Wikipedia 解析演员资料（生日、身高、三围等）
 - **批量操作**：支持一键获取所有演员的头像和信息
 
+<figure class="half">
+  <img src="https://raw.githubusercontent.com/LinYuanovo/pic_bed/refs/heads/main/JAV-Manager/actors_page.png" title="actors_page"/> 
+  <img src="https://raw.githubusercontent.com/LinYuanovo/pic_bed/refs/heads/main/JAV-Manager/actor_detail_page.png" title="actor_detail_page"/> 
+</figure>
+
+### 🏷️ 分类系统
+
+- **多类型分类**：按标签、系列、片商进行分类
+
+<figure class="half">
+  <img src="https://raw.githubusercontent.com/LinYuanovo/pic_bed/refs/heads/main/JAV-Manager/categories_page.png" title="categories_page"/> 
+  <img src="https://raw.githubusercontent.com/LinYuanovo/pic_bed/refs/heads/main/JAV-Manager/category_detail_page.png" title="category_detail_page"/> 
+</figure>
+
 ### ❤️ 收藏功能
 
 - **多类型收藏**：影片、演员、分类均可收藏
-- **独立收藏页面**：支持搜索、筛选和排序
-- **Tab 状态持久化**：记住上次浏览的标签页
-- **实时同步**：收藏状态即时更新到各页面
+- **独立收藏页面**：支持搜索、排序
+
+![favorites_page](https://raw.githubusercontent.com/LinYuanovo/pic_bed/refs/heads/main/JAV-Manager/favorites_page.png)
 
 ### 📋 已观看追踪
 
@@ -46,11 +65,7 @@
 - **自动整理**：将已观看视频移动到指定目录（安全移动防数据丢失）
 - **智能标记**：自动标记观看状态，媒体库不再显示已观看内容
 
-### 🔐 数据安全
-
-- **WebDAV 云备份**：支持上传/下载/删除/导入云端数据库备份
-- **本地备份**：导出/导入 .db 文件，调用系统文件选择器
-- **原子写入**：设置文件先写临时文件再重命名，防止崩溃损坏
+![watched_page](https://raw.githubusercontent.com/LinYuanovo/pic_bed/refs/heads/main/JAV-Manager/watched_page.png)
 
 ## 🛠️ 技术栈
 
@@ -115,7 +130,14 @@ JAV-Manager/
 
 ### 安装步骤
 
+#### 直接使用
+
+在[releases](https://github.com/LinYuanovo/JAV-Manager/releases)页面直接下载zip压缩包后**解压**即可使用
+
+#### 自行构建
+
 1. **克隆仓库**
+   
    ```bash
    git clone https://github.com/LinYuanovo/JAV-Manager.git
    cd JAV-Manager
@@ -139,7 +161,7 @@ JAV-Manager/
 
 ## 📂 媒体库目录结构
 
-应用期望以下目录结构来正确识别和管理视频：
+应用期望以下目录结构（[如何得到？](https://github.com/Yuukiy/JavSP)）来正确识别和管理视频：
 
 ```
 媒体库根目录/

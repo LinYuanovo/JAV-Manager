@@ -30,6 +30,7 @@ void main() async {
     );
 
     await windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.setIcon('windows/runner/resources/app_icon.ico');
       await windowManager.show();
       await windowManager.focus();
     });
