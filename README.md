@@ -5,12 +5,12 @@
   <img src="https://img.shields.io/badge/Dart-3.11+-0175C2?style=flat-square&logo=dart" alt="Dart">
   <img src="https://img.shields.io/badge/Platform-Windows-0078D6?style=flat-square&logo=windows" alt="Windows">
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
-  <img src="https://img.shields.io/badge/Version-1.2.0-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.3.0-blue?style=flat-square" alt="Version">
 </p>
 
 <p align="center">
   <b>一款基于 Flutter 开发的 Windows 本地视频媒体管理器</b><br>
-  <i>现代化 UI · 玻璃拟态设计 · 智能整理</i>
+  <i>现代化 UI · 玻璃拟态设计 · 智能整理 · 纯净模式</i>
 </p>
 
 ***
@@ -23,6 +23,8 @@
 - **灵活排序**：标题、随机、最近观看
 - **自适应网格布局**，支持固定列数
 - **手动/自动扫描**媒体库，实时更新
+- **搜索防抖**：输入时智能延迟查询
+- **纯净模式**：仅显示番号，海报图马赛克处理
 
 ### 👤 演员管理
 
@@ -35,13 +37,20 @@
 
 - **多类型收藏**：影片、演员、分类均可收藏
 - **独立收藏页面**：支持搜索、筛选和排序
+- **Tab 状态持久化**：记住上次浏览的标签页
 - **实时同步**：收藏状态即时更新到各页面
 
 ### 📋 已观看追踪
 
 - **观看记录**：记录观看次数和最后观看时间
-- **自动整理**：将已观看视频移动到指定目录
+- **自动整理**：将已观看视频移动到指定目录（安全移动防数据丢失）
 - **智能标记**：自动标记观看状态，媒体库不再显示已观看内容
+
+### 🔐 数据安全
+
+- **WebDAV 云备份**：支持上传/下载/删除/导入云端数据库备份
+- **本地备份**：导出/导入 .db 文件，调用系统文件选择器
+- **原子写入**：设置文件先写临时文件再重命名，防止崩溃损坏
 
 ## 🛠️ 技术栈
 
@@ -52,8 +61,7 @@
 | [Riverpod](https://riverpod.dev)                                        | ^2.4.9      | 状态管理              |
 | [SQLite](https://www.sqlite.org)                                        | via sqflite | 本地数据存储            |
 | [window\_manager](https://pub.dev/packages/window_manager)              | ^0.3.7      | 窗口管理（尺寸、位置、状态持久化） |
-| [SharedPreferences](https://pub.dev/packages/shared_preferences)        | ^2.2.2      | 用户偏好设置持久化         |
-| [cached\_network\_image](https://pub.dev/packages/cached_network_image) | ^3.3.0      | 网络图片缓存            |
+| [http](https://pub.dev/packages/http)                                    | ^1.1.0      | HTTP 客户端（代理支持）     |
 
 ## 📁 项目结构
 
@@ -65,22 +73,23 @@ JAV-Manager/
 ├── lib/                          # 应用源代码
 │   ├── main.dart                 # 应用入口
 │   ├── core/                     # 核心业务逻辑
-│   │   ├── database/             # 数据库层
-│   │   ├── models/               # 数据模型 (Video, Actor, Category)
-│   │   ├── providers/            # Riverpod 状态管理
-│   │   ├── repositories/         # 数据访问层
-│   │   ├── services/             # 业务服务 (扫描、整理、头像获取)
-│   │   └── utils/                # 工具类
+│   │   ├── database/             # 数据库层 (Completer 安全初始化)
+│   │   ├── models/               # 数据模型 (Video, Actor, Category + copyWith null安全)
+│   │   ├── providers/            # Riverpod 状态管理 (枚举索引边界检查)
+│   │   ├── repositories/         # 数据访问层 (批量关联加载消除N+1)
+│   │   ├── services/             # 业务服务 (扫描、整理、头像获取、WebDAV)
+│   │   └── utils/                # 工具类 (AppSettings单例缓存, AppPaths路径, Debouncer)
 │   └── ui/                       # 用户界面
-│       ├── theme/                # 主题配置 (玻璃拟态组件)
+│       ├── theme/                # 主题配置 (玻璃拟态组件 + LayoutConstants + 玻璃菜单主题)
+│       ├── widgets/              # 共享组件 (ActorAvatar, MosaicImage, EmptyStateWidget)
 │       └── pages/                # 页面模块
-│           ├── home_page.dart    # 主页
+│           ├── home_page.dart    # 主页 (窗口图标动态切换)
 │           ├── media/            # 媒体页面
 │           ├── actors/           # 演员页面
-│           ├── categories/       # 分类页面
-│           ├── favorites/        # 收藏页面
+│           ├── categories/       # 分类页面 (Tab持久化)
+│           ├── favorites/        # 收藏页面 (Tab持久化)
 │           ├── watched/          # 已观看页面
-│           └── settings/         # 设置页面
+│           └── settings/         # 设置页面 (纯净模式开关)
 ├── windows/                      # Windows 平台代码
 ├── fonts/                        # 自定义字体
 ├── prompt/                       # 项目文档
@@ -144,7 +153,7 @@ JAV-Manager/
 │   └── 演员2,演员3/              # 多演员用逗号分隔
 │
 └── Watched/                      # 已观看目录 (可在设置中自定义路径)
-    └── ...
+   └── ...
 ```
 
 ### NFO 文件格式示例
