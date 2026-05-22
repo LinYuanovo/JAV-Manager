@@ -15,6 +15,7 @@ import 'categories/categories_page.dart';
 import 'favorites/favorites_page.dart';
 import 'watched/watched_page.dart';
 import 'settings/settings_page.dart';
+import 'scraper/scraper_page.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -217,10 +218,10 @@ class _HomePageState extends ConsumerState<HomePage> with WindowListener {
             child: Row(
               children: [
                 const SizedBox(width: 16),
-                const Icon(
-                  Icons.video_library_rounded,
-                  color: AppTheme.primaryColor,
-                  size: 20,
+                Image.asset(
+                  'app_icon.png',
+                  width: 28,
+                  height: 28,
                 ),
                 const SizedBox(width: 12),
                 ShaderMask(
@@ -308,6 +309,14 @@ class _HomePageState extends ConsumerState<HomePage> with WindowListener {
                   const SizedBox(height: 16),
                   _buildNavItem(
                     index: 0,
+                    icon: Icons.cloud_download_outlined,
+                    selectedIcon: Icons.cloud_download,
+                    label: '刮削',
+                    selectedIndex: selectedIndex,
+                    fontSize: fontSize,
+                  ),
+                  _buildNavItem(
+                    index: 1,
                     icon: Icons.movie_outlined,
                     selectedIcon: Icons.movie,
                     label: '媒体',
@@ -316,7 +325,7 @@ class _HomePageState extends ConsumerState<HomePage> with WindowListener {
                     fontSize: fontSize,
                   ),
                   _buildNavItem(
-                    index: 1,
+                    index: 2,
                     icon: Icons.people_outline,
                     selectedIcon: Icons.people,
                     label: '演员',
@@ -325,7 +334,7 @@ class _HomePageState extends ConsumerState<HomePage> with WindowListener {
                     fontSize: fontSize,
                   ),
                   _buildNavItem(
-                    index: 2,
+                    index: 3,
                     icon: Icons.category_outlined,
                     selectedIcon: Icons.category,
                     label: '分类',
@@ -333,7 +342,7 @@ class _HomePageState extends ConsumerState<HomePage> with WindowListener {
                     fontSize: fontSize,
                   ),
                   _buildNavItem(
-                    index: 3,
+                    index: 4,
                     icon: Icons.favorite_outline,
                     selectedIcon: Icons.favorite,
                     label: '收藏',
@@ -341,7 +350,7 @@ class _HomePageState extends ConsumerState<HomePage> with WindowListener {
                     fontSize: fontSize,
                   ),
                   _buildNavItem(
-                    index: 4,
+                    index: 5,
                     icon: Icons.visibility_outlined,
                     selectedIcon: Icons.visibility,
                     label: '已看',
@@ -351,7 +360,7 @@ class _HomePageState extends ConsumerState<HomePage> with WindowListener {
                   ),
                   const Spacer(),
                   _buildNavItem(
-                    index: 5,
+                    index: 6,
                     icon: Icons.settings_outlined,
                     selectedIcon: Icons.settings,
                     label: '设置',
@@ -476,17 +485,19 @@ class _HomePageState extends ConsumerState<HomePage> with WindowListener {
 
   Widget _buildContent(int selectedIndex) {
     switch (selectedIndex) {
-      case 0:
+      case 0:  // 刮削
+        return const ScraperPage();
+      case 1:  // 媒体
         return const MediaPage();
-      case 1:
+      case 2:  // 演员
         return const ActorsPage();
-      case 2:
+      case 3:  // 分类
         return const CategoriesPage();
-      case 3:
+      case 4:  // 收藏
         return const FavoritesPage();
-      case 4:
+      case 5:  // 已看
         return const WatchedPage();
-      case 5:
+      case 6:  // 设置
         return const SettingsPage();
       default:
         return const MediaPage();
