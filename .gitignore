@@ -59,7 +59,6 @@ __pycache__/
 *.pyo
 python_scraper/dist/
 python_scraper/build/
-python_scraper/*.spec
 
 # PyInstaller output
 dist/
