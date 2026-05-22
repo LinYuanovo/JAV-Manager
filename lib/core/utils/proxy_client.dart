@@ -6,7 +6,7 @@ import 'app_settings.dart';
 
 /// Read Windows system proxy from registry.
 /// Returns the proxy URL (e.g. "127.0.0.1:7890") or null if not set/disabled.
-String? _readWindowsSystemProxy() {
+String? readWindowsSystemProxy() {
   try {
     // Use reg query to read Internet Settings
     final result = Process.runSync(
@@ -65,7 +65,7 @@ http.Client createProxyClient({String? proxyMode, String? proxyUrl}) {
   final httpClient = HttpClient();
 
   if (mode == 'system') {
-    final systemProxy = _readWindowsSystemProxy();
+    final systemProxy = readWindowsSystemProxy();
     if (systemProxy != null) {
       httpClient.findProxy = (uri) {
         if (kDebugMode) debugPrint('[Proxy] Using system proxy: $systemProxy for ${uri.host}');

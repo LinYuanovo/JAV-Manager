@@ -76,3 +76,9 @@ test_*.bat
 # Temporary deployment docs (not for distribution)
 DEPLOYMENT.md
 QUICK_START.md
+
+.trae/
+.claude/
+.trae/documents
+.metadata
+jav_manager.iml

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/app_settings.dart';
+import '../utils/proxy_client.dart';
 import '../repositories/video_repository.dart';
 import '../repositories/actor_repository.dart';
 import '../repositories/category_repository.dart';
@@ -9,7 +10,9 @@ import '../services/wikipedia_service.dart';
 import '../services/auto_task_service.dart';
 import '../services/avatar_service.dart';
 import '../services/webdav_service.dart';
+import '../services/scraper_service.dart';
 import '../models/models.dart';
+import '../models/scraper_models.dart';
 
 final sharedPreferencesProvider = Provider<AppSettings>((ref) {
   throw UnimplementedError('AppSettings not initialized');
@@ -402,4 +405,77 @@ final categoryViewModeProvider = StateProvider<ViewMode>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   final viewIndex = prefs.getInt('category_view_mode') ?? 2;
   return ViewMode.values[viewIndex.clamp(0, ViewMode.values.length - 1)];
+});
+
+// ===== 刮削相关 Providers =====
+
+/// 刮削服务 Provider
+final scraperServiceProvider = Provider<ScraperService>((ref) {
+  return ScraperService();
+});
+
+/// 刮削配置 Provider（从设置加载）
+final scraperConfigProvider = StateProvider<ScraperConfig>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  
+  // 从 SharedPreferences 加载配置
+  final scanDir = prefs.getString('scraper_scan_dir') ?? '';
+  final ignoreFoldersStr = prefs.getString('scraper_ignore_folders') ?? '';
+  final ignoreFolders = ignoreFoldersStr.isNotEmpty
+      ? ignoreFoldersStr.split('|').where((s) => s.isNotEmpty).toList()
+      : <String>[];
+  final javdbCookie = prefs.getString('scraper_javdb_cookie');
+  final translateTitle = prefs.getBool('scraper_translate_title') ?? true;
+  final translatePlot = prefs.getBool('scraper_translate_plot') ?? true;
+  final maxWorkers = prefs.getInt('scraper_max_workers') ?? 4;
+  
+  // 读取代理设置（与设置页面共享的 proxy_mode / proxy_url）
+  final proxyMode = prefs.getString('proxy_mode') ?? 'none';
+  final proxyUrl = prefs.getString('proxy_url') ?? '';
+  bool useProxy = false;
+  String actualProxyUrl = '';
+
+  if (proxyMode == 'custom' && proxyUrl.isNotEmpty) {
+    useProxy = true;
+    actualProxyUrl = proxyUrl;
+  } else if (proxyMode == 'system') {
+    // 尝试读取 Windows 系统代理（如 Clash 设置的 http://127.0.0.1:7897）
+    final sysProxy = readWindowsSystemProxy();
+    if (sysProxy != null && sysProxy.isNotEmpty) {
+      useProxy = true;
+      actualProxyUrl = sysProxy.startsWith('http') ? sysProxy : 'http://$sysProxy';
+    }
+  }
+  
+  return ScraperConfig(
+    scanDir: scanDir,
+    ignoreFolders: ignoreFolders,
+    javdbCookie: javdbCookie,
+    translateTitle: translateTitle,
+    translatePlot: translatePlot,
+    maxWorkers: maxWorkers,
+    useProxy: useProxy,
+    proxyUrl: actualProxyUrl,
+  );
+});
+
+/// 刮削任务状态 Provider
+final scrapingTaskStateProvider = StateProvider<ScrapingTaskState>((ref) {
+  return ScrapingTaskState.idle;
+});
+
+/// Python 进程运行状态 Provider（用于 UI 实时刷新）
+final scraperProcessRunningProvider = StateProvider<bool>((ref) {
+  return false;
+});
+
+/// 待刮削影片列表 Provider
+final scrapableMoviesProvider = StateProvider<List<ScrapableMovie>>((ref) {
+  return [];
+});
+
+/// 刮削统计信息 Provider
+final scrapeStatsProvider = Provider<ScrapeStats>((ref) {
+  final movies = ref.watch(scrapableMoviesProvider);
+  return ScrapeStats.fromList(movies);
 });
