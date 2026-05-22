@@ -1,7 +1,6 @@
 # Miscellaneous
 *.class
 *.log
-*.pyc
 *.swp
 .DS_Store
 
@@ -29,6 +28,8 @@ flutter_*.png
 # Native
 *.cxx
 *.cmake
+*.h
+*.java
 *.o
 *.obj
 *.pdb
@@ -36,10 +37,6 @@ flutter_*.png
 *.png.h
 *.swift.h
 *.xcconfig
-
-# Windows headers (required for build)
-!windows/runner/*.h
-!windows/flutter/*.h
 
 # Platform
 android/app/src/main/java/com/example/jav_manager/
@@ -53,15 +50,30 @@ windows/runner/Resources/
 *.db-shm
 *.db-wal
 
-# Media Files (videos, images in library)
-#整理完成/
-*.mp4
-*.mkv
-*.avi
-*.srt
-*.ass
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.pyo
+python_scraper/dist/
+python_scraper/build/
+python_scraper/*.spec
 
-# Privacy & Local Config
-.claude/
-.metadata
-*.iml
+# PyInstaller output
+dist/
+
+# Release / Build outputs (用户下载或自行构建)
+release/
+
+# Test scripts
+test_*.py
+test_*.bat
+
+# Build scripts (keep build_all.bat for developers)
+!build_all.bat
+
+# Temporary deployment docs (not for distribution)
+DEPLOYMENT.md
+QUICK_START.md

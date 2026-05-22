@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-05-22
+
+### Added
+- Python 刮削器集成（基于 JavSP，支持 javbus/jav321/javdb 三大爬虫）
+- 影片刮削功能（自动获取元数据、封面、演员信息）
+- 文件整理功能（按"演员名/[番号]标题/"结构组织文件）
+- NFO 文件生成（Kodi/Emby 兼容格式）
+- 海报图生成（fanart.jpg + poster.jpg 自动裁切）
+- 翻译功能（Google Translate 免费接口，可配置开关）
+- PyInstaller 打包支持（用户无需安装 Python 环境）
+- 设置页面新增"刮削设置"区块（影片目录、忽略文件夹、Cookie、翻译开关）
+- 忽略文件夹功能（支持分号分隔多个文件夹名）
+
+### Fixed
+- 修复刮削器路径检测问题（支持 javsp_scraper.exe 和 scraper.exe）
+- 修复 MovieInfo 类身份不匹配导致的刮削失败问题
+- 修复多线程并发写 stdout 导致 JSON 消息交错问题
+- 修复统计信息不正确问题（总计、待处理数量更新）
+- 修复 UI 进度显示异常（刮削完成后仍显示"爬取中"）
+- 修复 poster.jpg 裁切错误（从缩放改为右侧 378px 裁切）
+- 修复翻译功能依赖第三方包问题（改用 urllib 直接调用 Google Translate）
+
+### Changed
+- 版本号升级至 1.4.0
+- 调整设置页面顺序：刮削设置移至媒体库设置上方
+- 爬虫顺序调整为 javbus → jav321 → javdb
+- 优化刮削超时保护机制（每个爬虫 20 秒超时）
+
 ## [1.3.0] - 2026-05-20
 
 ### Added

@@ -1,7 +1,7 @@
 name: jav_manager
 description: 本地视频媒体管理器
 publish_to: 'none'
-version: 1.3.0+5
+version: 1.4.0+6
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -41,6 +41,9 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - app_icon.png
 
   fonts:
     - family: MapleMonoNL-NF-CN

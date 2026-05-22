@@ -6,7 +6,7 @@
     <img src="https://img.shields.io/badge/Dart-3.11+-0175C2?style=flat-square&logo=dart" alt="Dart">
     <img src="https://img.shields.io/badge/Platform-Windows-0078D6?style=flat-square&logo=windows" alt="Windows">
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
-    <img src="https://img.shields.io/badge/Version-1.3.0-blue?style=flat-square" alt="Version">
+    <img src="https://img.shields.io/badge/Version-1.4.0-blue?style=flat-square" alt="Version">
   </nobr>
 </p>
 
@@ -24,11 +24,18 @@
 <details>
 <summary>点击展开查看环境要求</summary>
 
+#### 用户使用（直接下载）
+- **操作系统**: Windows 10/11 (64位)
+- **内存**: 建议 4GB+
+- **磁盘空间**: 200MB+（解压后）
+
+#### 开发者构建（完整功能）
 - **Flutter SDK**: >= 3.41.9
 - **Dart SDK**: >= 3.11.5
+- **Python**: >= 3.8（用于刮削器）
 - **操作系统**: Windows 10/11 (64位)
 - **内存**: 建议 8GB+
-- **磁盘空间**: 2GB+ (用于构建)
+- **磁盘空间**: 5GB+（含 Python 依赖和构建缓存）
 
 </details>
 
@@ -42,6 +49,8 @@ Windows系统在[releases](https://github.com/LinYuanovo/JAV-Manager/releases)�
 
 <details>
 <summary>点击展开查看自行构建方式</summary>
+
+##### 方式一：仅 Flutter 应用（无刮削功能）
 
 ```bash
 # 克隆仓库
@@ -62,6 +71,45 @@ flutter build windows --release
 ```
 build/windows/x64/runner/Release/jav_manager.exe
 ```
+
+> ⚠️ **注意**：此方式构建的应用**不包含刮削功能**，如需完整功能请使用方式二。
+
+---
+
+##### 方式二：完整构建（含 Python 刮削器）
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/LinYuanovo/JAV-Manager.git
+cd JAV-Manager
+
+# 2. 安装 Flutter 依赖
+flutter pub get
+
+# 3. 安装 Python 依赖
+pip install -r python_scraper/requirements.txt
+pip install pyinstaller
+
+# 4. 构建 Flutter 应用
+flutter build windows --release
+
+# 5. 打包 Python 刮削器（生成 javsp_scraper.exe）
+pyinstaller python_scraper/scraper.spec --clean --noconfirm
+
+# 6. 将刮削器复制到 Flutter 发布目录
+copy dist\javsp_scraper.exe build\windows\x64\runner\Release\
+```
+
+最终发布目录结构：
+```
+build/windows/x64/runner/Release/
+├── jav_manager.exe           # Flutter 主程序
+├── javsp_scraper.exe         # Python 刮削器 ⭐
+├── flutter_windows.dll       # Flutter 运行时
+└── ... (其他必要文件)
+```
+
+> ✅ **推荐**：此方式构建的应用包含完整功能，用户无需安装 Python。
 
 </details>
 
@@ -118,6 +166,13 @@ build/windows/x64/runner/Release/jav_manager.exe
 </details>
 
 ## ✨ 功能特性
+
+### 📇 刮削中心
+
+- **多个来源**：JAVBUS / JAV321 / JAVDB
+- **自动整理**：将刮削后的影片整理为软件可用的形式
+
+![scraper_page](https://raw.githubusercontent.com/LinYuanovo/pic_bed/refs/heads/main/JAV-Manager/scraper_page.png)
 
 ### 📺 媒体管理
 
@@ -215,5 +270,5 @@ JAV-Manager/
 ## 🙏 致谢
 
 - [gfriends](https://github.com/gfriends/gfriends) - 演员头像资源仓库
-- [JavSP](https://github.com/Yuukiy/JavSP) - 元数据刮削器
+- [JavSP](https://github.com/Yuukiy/JavSP) - JAV 元数据刮削器
 - [VideoCaptioner](https://github.com/WEIFENG2333/VideoCaptioner) - 视频字幕处理工具

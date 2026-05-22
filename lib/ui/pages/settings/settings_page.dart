@@ -24,6 +24,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   late TextEditingController _webdavUrlController;
   late TextEditingController _webdavUsernameController;
   late TextEditingController _webdavPasswordController;
+  // 刮削相关
+  late TextEditingController _scraperDirController;
+  late TextEditingController _javdbCookieController;
   String _proxyMode = 'none';
   bool _isScanning = false;
   bool _isTestingProxy = false;
@@ -37,6 +40,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _enableGridAnimation = true;
   bool _enableAutoMove = true;
   bool _pureModeEnabled = false;
+  // 刮削设置状态
+  List<String> _ignoreFolders = [];
+  bool _translateTitle = true;
+  bool _translatePlot = true;
 
   @override
   void initState() {
@@ -55,6 +62,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final font = prefs.getString('font_family') ?? '';
     final fontSize = prefs.getDouble('font_size') ?? 14.0;
 
+    // 加载刮削配置
+    final scraperDir = prefs.getString('scraper_scan_dir') ?? '';
+    final javdbCookie = prefs.getString('scraper_javdb_cookie') ?? '';
+    final ignoreFoldersStr = prefs.getString('scraper_ignore_folders') ?? '';
+    _ignoreFolders = ignoreFoldersStr.isNotEmpty
+        ? ignoreFoldersStr.split('|').where((s) => s.isNotEmpty).toList()
+        : [];
+    _translateTitle = prefs.getBool('scraper_translate_title') ?? true;
+    _translatePlot = prefs.getBool('scraper_translate_plot') ?? true;
+
     _libraryPathController = TextEditingController(text: libraryPath);
     _watchedPathController = TextEditingController(text: watchedPath);
     _playerPathController = TextEditingController(text: playerPath);
@@ -64,6 +81,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _webdavUrlController = TextEditingController(text: prefs.getString('webdav_url') ?? '');
     _webdavUsernameController = TextEditingController(text: prefs.getString('webdav_username') ?? '');
     _webdavPasswordController = TextEditingController(text: prefs.getString('webdav_password') ?? '');
+    // 初始化刮削控制器
+    _scraperDirController = TextEditingController(text: scraperDir);
+    _javdbCookieController = TextEditingController(text: javdbCookie);
     _selectedFont = font;
     _fontSize = fontSize;
     _enableGridAnimation = prefs.getBool('enable_grid_animation') ?? true;
@@ -81,6 +101,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _webdavUrlController.dispose();
     _webdavUsernameController.dispose();
     _webdavPasswordController.dispose();
+    _scraperDirController.dispose();
+    _javdbCookieController.dispose();
     super.dispose();
   }
 
@@ -95,6 +117,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(height: 32),
           _buildActionsSection(),
           const SizedBox(height: 32),
+          _buildScraperSettingsSection(),
+          const SizedBox(height: 24),
           _buildSection(
             title: '媒体库设置',
             icon: Icons.folder_outlined,
@@ -564,6 +588,174 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
+  Widget _buildScraperSettingsSection() {
+    return _buildSection(
+      title: '刮削设置',
+      icon: Icons.cloud_download_outlined,
+      children: [
+        // 1. 扫描目录选择
+        _buildPathSetting(
+          label: '影片目录',
+          hint: '选择要刮削的影片所在文件夹',
+          controller: _scraperDirController,
+          onBrowse: () => _selectDirectory(_scraperDirController),
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // 2. 忽略文件夹（多选+删除）
+        _buildIgnoreFoldersSetting(),
+        
+        const SizedBox(height: 16),
+        
+        // 3. JavDB Cookie 输入
+        _buildJavdbCookieSetting(),
+        
+        const SizedBox(height: 16),
+        
+        // 4. 翻译开关
+        Row(
+          children: [
+            Expanded(
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('翻译标题', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                        SizedBox(height: 4),
+                        Text('将日文标题翻译为中文', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: _translateTitle,
+                    onChanged: (value) => setState(() => _translateTitle = value),
+                    activeThumbColor: AppTheme.primaryColor,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 24),
+            Expanded(
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('翻译剧情简介', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                        SizedBox(height: 4),
+                        Text('将剧情简介翻译为中文', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: _translatePlot,
+                    onChanged: (value) => setState(() => _translatePlot = value),
+                    activeThumbColor: AppTheme.primaryColor,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIgnoreFoldersSetting() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '忽略文件夹',
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            ..._ignoreFolders.map((folder) {
+              return Chip(
+                label: Text(folder, style: const TextStyle(fontSize: 12)),
+                deleteIcon: const Icon(Icons.close, size: 16),
+                onDeleted: () {
+                  setState(() {
+                    _ignoreFolders.remove(folder);
+                  });
+                },
+                backgroundColor: Colors.white.withValues(alpha: 0.6),
+                side: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.2)),
+              );
+            }),
+            ActionChip(
+              label: const Text('+ 添加', style: TextStyle(fontSize: 12, color: AppTheme.primaryColor)),
+              onPressed: _addIgnoreFolder,
+              backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
+              side: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _addIgnoreFolder() async {
+    final result = await FilePicker.getDirectoryPath(
+      dialogTitle: '选择要忽略的文件夹',
+    );
+    
+    if (result != null) {
+      final folderName = result.split(Platform.pathSeparator).last;
+      if (!_ignoreFolders.contains(folderName)) {
+        setState(() {
+          _ignoreFolders.add(folderName);
+        });
+      }
+    }
+  }
+
+  Widget _buildJavdbCookieSetting() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'JavDB Cookie（可选）',
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '手动填入以启用 JavDB 刮削，留空则不使用 JavDB',
+          style: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.6), fontSize: 11),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _javdbCookieController,
+          obscureText: false,
+          style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+          decoration: InputDecoration(
+            hintText: '_jdb_session=xxx; locale=zh',
+            hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+            filled: true,
+            fillColor: Colors.white.withValues(alpha: 0.6),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(GlassConstants.radiusMedium),
+              borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.2)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(GlassConstants.radiusMedium),
+              borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.2)),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildProxySection() {
     return _buildSection(
       title: '网络代理设置',
@@ -762,6 +954,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     await prefs.setString('webdav_url', _webdavUrlController.text);
     await prefs.setString('webdav_username', _webdavUsernameController.text);
     await prefs.setString('webdav_password', _webdavPasswordController.text);
+
+    // 保存刮削配置
+    await prefs.setString('scraper_scan_dir', _scraperDirController.text);
+    await prefs.setString('scraper_javdb_cookie', _javdbCookieController.text);
+    await prefs.setString('scraper_ignore_folders', _ignoreFolders.join('|'));
+    await prefs.setBool('scraper_translate_title', _translateTitle);
+    await prefs.setBool('scraper_translate_plot', _translatePlot);
 
     final autoTaskService = ref.read(autoTaskServiceProvider);
     await autoTaskService.setScanInterval(interval);

@@ -22,20 +22,40 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
     - name: Set up Flutter
       uses: subosito/flutter-action@v2
       with:
         flutter-version: '3.41.9'
         channel: 'stable'
 
-    - name: Verify Flutter installation
-      run: flutter --version
+    - name: Verify installations
+      run: |
+        python --version
+        flutter --version
 
-    - name: Get dependencies
+    - name: Get dependencies (Flutter)
       run: flutter pub get
 
-    - name: Build Windows app
+    - name: Install Python dependencies
+      run: |
+        pip install -r python_scraper/requirements.txt
+        pip install pyinstaller
+
+    - name: Build Windows app (Flutter)
       run: flutter build windows --release
+
+    - name: Build Python scraper (PyInstaller)
+      run: pyinstaller python_scraper/scraper.spec --clean --noconfirm
+
+    - name: Copy scraper to release directory
+      shell: bash
+      run: |
+        cp dist/javsp_scraper.exe build/windows/x64/runner/Release/
 
     - name: Get version from pubspec.yaml
       id: get_version
@@ -54,6 +74,8 @@ jobs:
       shell: bash
       run: |
         ls -lh "${GITHUB_WORKSPACE}/JAV-Manager-${{ steps.get_version.outputs.VERSION }}.zip"
+        echo "包含文件:"
+        ls -lh build/windows/x64/runner/Release/*.exe build/windows/x64/runner/Release/*.dll | head -10
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
@@ -65,11 +87,18 @@ jobs:
 
           ### 📦 下载说明
           - 下载 `JAV-Manager-${{ steps.get_version.outputs.VERSION }}.zip`
-          - 解压到任意目录
-          - 运行 `JAV-Manager.exe`
+          - 解压到任意目录（保持目录结构完整）
+          - 运行 `jav_manager.exe`
+
+          ### ✨ 系统要求
+          - Windows 10/11 (64位)
+          - 首次运行可能需要几秒钟初始化
+
+          ### ⚠️ 注意事项
+          - 如遇杀毒软件误报，请添加信任或临时关闭防护
 
           ### ✨ 更新内容
-          查看完整更新日志请访问 [CHANGELOG.md](https://github.com/LinYuanovo/JAV-Manager/blob/main/CHANGELOG.md)
+          - 查看完整更新日志请访问 [CHANGELOG.md](https://github.com/LinYuanovo/JAV-Manager/blob/main/CHANGELOG.md)
         files: |
           ${{ github.workspace }}/JAV-Manager-${{ steps.get_version.outputs.VERSION }}.zip
         draft: false
