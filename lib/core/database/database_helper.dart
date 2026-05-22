@@ -4,7 +4,7 @@ import '../utils/app_paths.dart';
 class DatabaseHelper {
   static Database? _database;
   static Future<Database>? _databaseFuture;
-  static const int _databaseVersion = 2;
+  static const int _databaseVersion = 3;
 
   /// Returns the root data directory where all app data is stored.
   static Future<String> getDataDir() => AppPaths.rootDir;
@@ -28,8 +28,28 @@ class DatabaseHelper {
         await db.execute('PRAGMA foreign_keys = ON');
       },
     );
+
+    // 安全检查：确保 ignored_codes 表存在（防止升级中断导致表缺失）
+    await _ensureTableExists(db, 'ignored_codes', '''
+      CREATE TABLE ignored_codes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        code TEXT UNIQUE NOT NULL,
+        title TEXT,
+        folder_path TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    ''', indexSql: 'CREATE INDEX IF NOT EXISTS idx_ignored_codes_code ON ignored_codes(code)');
+
     _database = db;
     return db;
+  }
+
+  static Future<void> _ensureTableExists(Database db, String tableName, String createSql, {String? indexSql}) async {
+    final result = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name=?", [tableName]);
+    if (result.isEmpty) {
+      await db.execute(createSql);
+      if (indexSql != null) await db.execute(indexSql);
+    }
   }
 
   static Future<void> _onCreate(Database db, int version) async {
@@ -119,6 +139,20 @@ class DatabaseHelper {
   static Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE videos ADD COLUMN plot TEXT');
+    }
+    if (oldVersion < 3) {
+      await db.execute('''
+        CREATE TABLE ignored_codes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          code TEXT UNIQUE NOT NULL,
+          title TEXT,
+          folder_path TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      ''');
+      await db.execute('''
+        CREATE INDEX idx_ignored_codes_code ON ignored_codes(code)
+      ''');
     }
   }
 

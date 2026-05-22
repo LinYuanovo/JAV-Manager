@@ -1,7 +1,7 @@
 name: jav_manager
 description: 本地视频媒体管理器
 publish_to: 'none'
-version: 1.4.0+6
+version: 1.4.1+7
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -22,6 +22,7 @@ dependencies:
   url_launcher: ^6.2.1
   window_manager: ^0.3.7
   file_picker: ^11.0.2
+  archive: ^4.0.4
 
 dev_dependencies:
   flutter_test:

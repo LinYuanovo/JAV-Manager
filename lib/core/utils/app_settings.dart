@@ -146,6 +146,9 @@ class AppSettings {
   /// Returns all keys currently stored.
   Set<String> get keys => _data.keys.toSet();
 
+  /// Returns a copy of all settings as a Map.
+  Map<String, dynamic> toMap() => Map<String, dynamic>.from(_data);
+
   /// Check if a key exists.
   bool containsKey(String key) => _data.containsKey(key);
 

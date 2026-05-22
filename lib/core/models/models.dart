@@ -137,7 +137,7 @@ class Video {
 
 extension VideoExtension on Video {
   String extractCode() {
-    final match = RegExp(r'^[A-Za-z]{2,5}[-_]?\d{3,5}').firstMatch(title ?? '');
+    final match = RegExp(r'[A-Za-z]{2,5}[-_]?\d{3,5}').firstMatch(title ?? '');
     return match?.group(0) ?? title ?? '未知';
   }
 }

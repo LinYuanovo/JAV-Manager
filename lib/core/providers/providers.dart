@@ -11,6 +11,8 @@ import '../services/auto_task_service.dart';
 import '../services/avatar_service.dart';
 import '../services/webdav_service.dart';
 import '../services/scraper_service.dart';
+import '../services/media_count_service.dart';
+import '../services/task_event_listener.dart';
 import '../models/models.dart';
 import '../models/scraper_models.dart';
 
@@ -31,11 +33,29 @@ final categoryRepositoryProvider = Provider<CategoryRepository>((ref) {
 });
 
 final mediaScannerServiceProvider = Provider<MediaScannerService>((ref) {
-  return MediaScannerService(
+  final service = MediaScannerService(
     videoRepository: ref.watch(videoRepositoryProvider),
     actorRepository: ref.watch(actorRepositoryProvider),
     categoryRepository: ref.watch(categoryRepositoryProvider),
   );
+  // 全局回调：扫描过程中实时刷新所有相关 Provider，不依赖任何页面生命周期
+  service.onVideoProcessed = () {
+    ref.invalidate(allVideosProvider);
+    ref.invalidate(watchedVideosProvider);
+    ref.invalidate(favoriteVideosProvider);
+    ref.invalidate(allActorsProvider);
+    ref.invalidate(allTagsProvider);
+    ref.invalidate(allSeriesProvider);
+    ref.invalidate(allStudiosProvider);
+  };
+  // 进度回调
+  service.onProgress = (processed, total) {
+    ref.read(scanProcessedProvider.notifier).state = processed;
+    ref.read(scanTotalProvider.notifier).state = total;
+  };
+  // 取消检查回调
+  service.shouldCancel = () => ref.read(scanCancelProvider);
+  return service;
 });
 
 final wikipediaServiceProvider = Provider<WikipediaService>((ref) {
@@ -85,6 +105,14 @@ final allVideosProvider = FutureProvider<List<Video>>((ref) async {
 });
 
 final mediaCountStateProvider = StateProvider<int>((ref) => 0);
+
+final mediaCountServiceProvider = Provider<MediaCountService>((ref) {
+  return MediaCountService(ref);
+});
+
+final taskEventListenerProvider = Provider<TaskEventListener>((ref) {
+  return TaskEventListener(ref);
+});
 
 final fontSizeProvider = StateProvider<double>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
@@ -362,6 +390,15 @@ final favoriteIsFixedColumnCountProvider = StateProvider<bool>((ref) {
 });
 
 final isScanningProvider = StateProvider<bool>((ref) => false);
+
+/// 扫描进度：已处理数
+final scanProcessedProvider = StateProvider<int>((ref) => 0);
+
+/// 扫描进度：总数
+final scanTotalProvider = StateProvider<int>((ref) => 0);
+
+/// 扫描取消标志
+final scanCancelProvider = StateProvider<bool>((ref) => false);
 
 final isActorFixedColumnCountProvider = StateProvider<bool>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);

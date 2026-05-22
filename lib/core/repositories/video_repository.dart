@@ -352,4 +352,38 @@ class VideoRepository {
     final videos = maps.map((map) => Video.fromMap(map)).toList();
     return _fillVideoRelations(videos);
   }
+
+  Future<void> addToIgnoredCodes(String code, {String? title, String? folderPath}) async {
+    final db = await _db;
+    await db.insert(
+      'ignored_codes',
+      {
+        'code': code,
+        'title': title,
+        'folder_path': folderPath,
+      },
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+  }
+
+  Future<void> removeFromIgnoredCodes(int id) async {
+    final db = await _db;
+    await db.delete('ignored_codes', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> removeFromIgnoredCodesByCode(String code) async {
+    final db = await _db;
+    await db.delete('ignored_codes', where: 'code = ?', whereArgs: [code]);
+  }
+
+  Future<List<Map<String, dynamic>>> getAllIgnoredCodes() async {
+    final db = await _db;
+    return await db.query('ignored_codes', orderBy: 'created_at DESC');
+  }
+
+  Future<bool> isCodeIgnored(String code) async {
+    final db = await _db;
+    final result = await db.query('ignored_codes', where: 'UPPER(code) = ?', whereArgs: [code.toUpperCase()], limit: 1);
+    return result.isNotEmpty;
+  }
 }

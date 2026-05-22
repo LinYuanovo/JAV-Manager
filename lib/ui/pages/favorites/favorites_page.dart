@@ -4,7 +4,7 @@ import '../../../core/providers/providers.dart';
 import '../../../core/models/models.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/actor_avatar.dart';
-import '../home_page.dart';
+import '../../widgets/video_grid.dart';
 import '../media/video_detail_dialog.dart';
 import '../actors/actor_detail_page.dart';
 import '../categories/category_videos_page.dart';

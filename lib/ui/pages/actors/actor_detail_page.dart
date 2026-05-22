@@ -10,7 +10,7 @@ import '../../../core/utils/proxy_client.dart';
 import '../../../core/utils/app_paths.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/actor_avatar.dart';
-import '../home_page.dart';
+import '../../widgets/video_grid.dart';
 import '../media/video_detail_dialog.dart';
 
 class ActorDetailPage extends ConsumerStatefulWidget {

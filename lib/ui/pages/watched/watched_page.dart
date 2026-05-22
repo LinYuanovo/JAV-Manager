@@ -7,7 +7,7 @@ import '../../../core/utils/app_settings.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/mosaic_image.dart';
 import '../actors/actor_detail_page.dart';
-import '../home_page.dart';
+import '../../widgets/video_grid.dart';
 import '../media/video_detail_dialog.dart';
 
 class WatchedPage extends ConsumerStatefulWidget {
@@ -241,21 +241,38 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
     AppTheme.showGlassMenu(
       context: context,
       position: RelativeRect.fromLTRB(position.dx, position.dy, position.dx + 1, position.dy + 1),
-      items: [
+      items: <PopupMenuEntry<String>>[
         const PopupMenuItem(value: 'play', child: ListTile(leading: Icon(Icons.play_arrow), title: Text('播放'), dense: true)),
         const PopupMenuItem(value: 'cancel_watched', child: ListTile(leading: Icon(Icons.visibility_off), title: Text('取消已观看'), dense: true)),
         const PopupMenuItem(value: 'folder', child: ListTile(leading: Icon(Icons.folder_open), title: Text('打开文件夹'), dense: true)),
         if (video.actors.isNotEmpty)
           const PopupMenuItem(value: 'actors', child: ListTile(leading: Icon(Icons.person), title: Text('查看演员'), dense: true)),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: 'ignore',
+          child: const ListTile(
+            leading: Icon(Icons.block, color: Colors.orange),
+            title: Text('移除媒体库', style: TextStyle(color: Colors.orange)),
+            dense: true,
+          ),
+        ),
+        PopupMenuItem(
+          value: 'delete_local',
+          child: const ListTile(
+            leading: Icon(Icons.delete_forever, color: Colors.red),
+            title: Text('删除本地文件', style: TextStyle(color: Colors.red)),
+            dense: true,
+          ),
+        ),
       ],
     ).then((value) async {
       if (value == null) return;
+      final repository = ref.read(videoRepositoryProvider);
       switch (value) {
         case 'play':
           await _playVideo(video);
           break;
         case 'cancel_watched':
-          final repository = ref.read(videoRepositoryProvider);
           await repository.resetWatchStatus(video.id!);
           ref.invalidate(watchedVideosProvider);
           ref.invalidate(allVideosProvider);
@@ -270,8 +287,79 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
             );
           }
           break;
+        case 'ignore':
+          await _removeFromLibrary(video, repository);
+          break;
+        case 'delete_local':
+          await _deleteLocalFile(video, repository);
+          break;
       }
     });
+  }
+
+  Future<void> _removeFromLibrary(Video video, dynamic repository) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.backgroundColor,
+        title: const Text('移除媒体库', style: TextStyle(color: Colors.orange)),
+        content: Text('确定要将「${video.title}」从媒体库移除吗？\n\n该番号将被加入黑名单，后续扫描时不再导入。文件不会被删除。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('确认移除', style: TextStyle(color: Colors.orange))),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    final code = video.extractCode();
+    await repository.addToIgnoredCodes(code, title: video.title, folderPath: video.folderPath);
+    await repository.deleteVideo(video.id!);
+
+    ref.invalidate(watchedVideosProvider);
+    ref.invalidate(allVideosProvider);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('已将 $code 移除媒体库并加入黑名单'), backgroundColor: AppTheme.successColor),
+      );
+    }
+  }
+
+  Future<void> _deleteLocalFile(Video video, dynamic repository) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.backgroundColor,
+        title: const Text('删除本地文件', style: TextStyle(color: Colors.red)),
+        content: Text('⚠️ 警告：此操作将永久删除「${video.title}」的文件夹及其所有内容！\n\n${video.folderPath}\n\n此操作不可撤销！'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('确认删除', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      final folder = Directory(video.folderPath);
+      if (await folder.exists()) await folder.delete(recursive: true);
+
+      final videosInFolder = await repository.getVideosByFolder(video.folderPath);
+      for (final v in videosInFolder) {
+        if (v.id != null) await repository.deleteVideo(v.id!);
+      }
+
+      ref.invalidate(watchedVideosProvider);
+      ref.invalidate(allVideosProvider);
+      ref.invalidate(favoriteVideosProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('已删除：${video.folderPath}'), backgroundColor: AppTheme.successColor));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('删除失败: $e'), backgroundColor: AppTheme.errorColor));
+      }
+    }
   }
 }
 

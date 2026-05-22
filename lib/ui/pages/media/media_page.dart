@@ -6,7 +6,7 @@ import '../../../core/providers/providers.dart';
 import '../../../core/models/models.dart';
 import '../../../core/utils/app_settings.dart';
 import '../../theme/app_theme.dart';
-import '../home_page.dart';
+import '../../widgets/video_grid.dart';
 import '../actors/actor_detail_page.dart';
 import 'video_detail_dialog.dart';
 
@@ -22,7 +22,6 @@ class _MediaPageState extends ConsumerState<MediaPage> {
   final _columnCountController = TextEditingController();
   final _searchDebouncer = Debouncer();
   String _searchQuery = '';
-  bool _isScanning = false;
   int _randomKey = 0;
 
   @override
@@ -222,16 +221,48 @@ class _MediaPageState extends ConsumerState<MediaPage> {
   }
 
   Widget _buildRefreshButton() {
+    final isScanning = ref.watch(isScanningProvider);
+    final processed = ref.watch(scanProcessedProvider);
+    final total = ref.watch(scanTotalProvider);
+
+    if (isScanning) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(width: 16),
+          SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryColor),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            total > 0 ? '$processed/$total' : '扫描中...',
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.stop_circle, color: Colors.red, size: 20),
+            tooltip: '停止扫描',
+            onPressed: () {
+              ref.read(scanCancelProvider.notifier).state = true;
+            },
+          ),
+        ],
+      );
+    }
+
     return IconButton(
-      icon: _isScanning
-          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryColor))
-          : const Icon(Icons.refresh, color: AppTheme.textSecondary),
+      icon: const Icon(Icons.refresh, color: AppTheme.textSecondary),
       tooltip: '刷新媒体库',
-      onPressed: _isScanning ? null : _refreshMediaLibrary,
+      onPressed: _refreshMediaLibrary,
     );
   }
 
   Future<void> _refreshMediaLibrary() async {
+    // 防止重复扫描
+    if (ref.read(isScanningProvider)) return;
+
     final prefs = ref.read(sharedPreferencesProvider);
     final libraryPath = prefs.getString('library_path') ?? '';
     if (libraryPath.isEmpty) {
@@ -243,13 +274,17 @@ class _MediaPageState extends ConsumerState<MediaPage> {
       return;
     }
 
-    setState(() => _isScanning = true);
+    ref.read(isScanningProvider.notifier).state = true;
+    ref.read(scanCancelProvider.notifier).state = false;
+    ref.read(scanProcessedProvider.notifier).state = 0;
+    ref.read(scanTotalProvider.notifier).state = 0;
     try {
       final autoTaskService = ref.read(autoTaskServiceProvider);
       await autoTaskService.runMoveNow();
 
       final scanner = ref.read(mediaScannerServiceProvider);
       await scanner.scanMediaLibrary(libraryPath);
+
       ref.invalidate(allVideosProvider);
       ref.invalidate(allActorsProvider);
       ref.invalidate(allTagsProvider);
@@ -269,7 +304,8 @@ class _MediaPageState extends ConsumerState<MediaPage> {
         );
       }
     } finally {
-      if (mounted) setState(() => _isScanning = false);
+      ref.read(isScanningProvider.notifier).state = false;
+      ref.read(scanCancelProvider.notifier).state = false;
     }
   }
 
@@ -312,7 +348,7 @@ class _MediaPageState extends ConsumerState<MediaPage> {
     AppTheme.showGlassMenu(
       context: context,
       position: RelativeRect.fromLTRB(position.dx, position.dy, position.dx + 1, position.dy + 1),
-      items: [
+      items: <PopupMenuEntry<String>>[
         const PopupMenuItem(value: 'play', child: ListTile(leading: Icon(Icons.play_arrow), title: Text('播放'), dense: true)),
         PopupMenuItem(
           value: 'favorite',
@@ -333,6 +369,23 @@ class _MediaPageState extends ConsumerState<MediaPage> {
         const PopupMenuItem(value: 'folder', child: ListTile(leading: Icon(Icons.folder_open), title: Text('打开文件夹'), dense: true)),
         if (video.actors.isNotEmpty)
           const PopupMenuItem(value: 'actors', child: ListTile(leading: Icon(Icons.person), title: Text('查看演员'), dense: true)),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: 'ignore',
+          child: const ListTile(
+            leading: Icon(Icons.block, color: Colors.orange),
+            title: Text('移除媒体库', style: TextStyle(color: Colors.orange)),
+            dense: true,
+          ),
+        ),
+        PopupMenuItem(
+          value: 'delete_local',
+          child: const ListTile(
+            leading: Icon(Icons.delete_forever, color: Colors.red),
+            title: Text('删除本地文件', style: TextStyle(color: Colors.red)),
+            dense: true,
+          ),
+        ),
       ],
     ).then((value) async {
       if (value == null) return;
@@ -365,6 +418,12 @@ class _MediaPageState extends ConsumerState<MediaPage> {
             );
           }
           break;
+        case 'ignore':
+          await _removeFromLibrary(video, repository);
+          break;
+        case 'delete_local':
+          await _deleteLocalFile(video, repository);
+          break;
       }
     });
   }
@@ -374,5 +433,92 @@ class _MediaPageState extends ConsumerState<MediaPage> {
     await repository.updateVideo(video.copyWith(isFavorite: !video.isFavorite));
     ref.invalidate(allVideosProvider);
     ref.invalidate(favoriteVideosProvider);
+  }
+
+  Future<void> _removeFromLibrary(Video video, dynamic repository) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.backgroundColor,
+        title: const Text('移除媒体库', style: TextStyle(color: Colors.orange)),
+        content: Text('确定要将「${video.title}」从媒体库移除吗？\n\n该番号将被加入黑名单，后续扫描时不再导入。文件不会被删除。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('确认移除', style: TextStyle(color: Colors.orange)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    final code = video.extractCode();
+    await repository.addToIgnoredCodes(code, title: video.title, folderPath: video.folderPath);
+    await repository.deleteVideo(video.id!);
+
+    ref.invalidate(allVideosProvider);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('已将 $code 移除媒体库并加入黑名单'), backgroundColor: AppTheme.successColor),
+      );
+    }
+  }
+
+  Future<void> _deleteLocalFile(Video video, dynamic repository) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.backgroundColor,
+        title: const Text('删除本地文件', style: TextStyle(color: Colors.red)),
+        content: Text('⚠️ 警告：此操作将永久删除「${video.title}」的文件夹及其所有内容（视频、NFO、海报等）！\n\n文件夹路径：${video.folderPath}\n\n此操作不可撤销！'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('确认删除', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final folder = Directory(video.folderPath);
+      if (await folder.exists()) {
+        await folder.delete(recursive: true);
+      }
+
+      final videosInFolder = await repository.getVideosByFolder(video.folderPath);
+      for (final v in videosInFolder) {
+        if (v.id != null) {
+          await repository.deleteVideo(v.id!);
+        }
+      }
+
+      ref.invalidate(allVideosProvider);
+      ref.invalidate(watchedVideosProvider);
+      ref.invalidate(favoriteVideosProvider);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('已删除：${video.folderPath}'), backgroundColor: AppTheme.successColor),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('删除失败: $e'), backgroundColor: AppTheme.errorColor),
+        );
+      }
+    }
   }
 }

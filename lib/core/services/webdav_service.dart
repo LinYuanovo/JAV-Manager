@@ -90,8 +90,9 @@ class WebdavService {
         return false;
       }
 
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final fileName = 'jav_manager_$timestamp.db';
+      final now = DateTime.now();
+      final timestamp = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
+      final fileName = 'jav_manager_$timestamp.zip';
       final uri = _buildUri(serverUrl, '$_backupFolder/$fileName');
       final bytes = await file.readAsBytes();
 
@@ -266,6 +267,10 @@ class WebdavService {
         if (dateStr != null) {
           date = DateTime.tryParse(dateStr);
         }
+        // 如果 WebDAV 没有返回日期，尝试从文件名解析
+        if (date == null) {
+          date = _parseDateFromFileName(name);
+        }
 
         files.add(WebDavFile(
           name: name,
@@ -317,6 +322,27 @@ class WebdavService {
     for (final child in parent.children) {
       if (child is XmlElement && candidates.contains(child.name.toString())) {
         return child.innerText;
+      }
+    }
+    return null;
+  }
+
+  /// 从备份文件名解析日期，支持新旧两种格式：
+  /// 新格式: jav_manager_20260522153045.zip
+  /// 旧格式: jav_manager_1700000000000.db
+  static DateTime? _parseDateFromFileName(String name) {
+    // 新格式: jav_manager_YYYYMMDDHHmmss.zip
+    final newMatch = RegExp(r'jav_manager_(\d{14})\.zip').firstMatch(name);
+    if (newMatch != null) {
+      final s = newMatch.group(1)!;
+      return DateTime.tryParse('${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)} ${s.substring(8, 10)}:${s.substring(10, 12)}:${s.substring(12, 14)}');
+    }
+    // 旧格式: jav_manager_毫秒时间戳.db
+    final oldMatch = RegExp(r'jav_manager_(\d{13,})\.db').firstMatch(name);
+    if (oldMatch != null) {
+      final ms = int.tryParse(oldMatch.group(1)!);
+      if (ms != null) {
+        return DateTime.fromMillisecondsSinceEpoch(ms);
       }
     }
     return null;

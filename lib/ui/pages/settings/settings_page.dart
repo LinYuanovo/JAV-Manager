@@ -1,12 +1,17 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:http/http.dart' as http;
+import 'package:archive/archive.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/utils/proxy_client.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/services/webdav_service.dart';
 import '../../theme/app_theme.dart';
+import 'ignored_codes_dialog.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -28,7 +33,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   late TextEditingController _scraperDirController;
   late TextEditingController _javdbCookieController;
   String _proxyMode = 'none';
-  bool _isScanning = false;
   bool _isTestingProxy = false;
   bool _webdavPasswordVisible = false;
   bool _isBackingUp = false;
@@ -44,6 +48,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   List<String> _ignoreFolders = [];
   bool _translateTitle = true;
   bool _translatePlot = true;
+  // 关于区块状态
+  String? _latestVersion;
+  bool _isCheckingUpdate = false;
+  bool _hasUpdate = false;
 
   @override
   void initState() {
@@ -117,6 +125,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(height: 32),
           _buildActionsSection(),
           const SizedBox(height: 32),
+          _buildAboutSection(),
+          const SizedBox(height: 32),
+          _buildProxySection(),
+          const SizedBox(height: 24),
           _buildScraperSettingsSection(),
           const SizedBox(height: 24),
           _buildSection(
@@ -172,8 +184,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           _buildWebdavSection(),
           const SizedBox(height: 24),
           _buildLocalBackupSection(),
-          const SizedBox(height: 24),
-          _buildProxySection(),
         ],
       ),
     );
@@ -588,6 +598,179 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
+  Widget _buildAboutSection() {
+    const currentVersion = '1.4.1';
+    const githubRepoUrl = 'https://github.com/LinYuanovo/JAV-Manager';
+    const releasesUrl = '$githubRepoUrl/releases';
+
+    return _buildSection(
+      title: '关于',
+      icon: Icons.info_outline,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Row(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('当前版本', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                      const SizedBox(height: 4),
+                      Text('v$currentVersion', style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                  const SizedBox(width: 32),
+                  if (_latestVersion != null) ...[
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(_hasUpdate ? '发现新版本' : '云端版本', style: TextStyle(color: _hasUpdate ? Colors.orange : AppTheme.textSecondary, fontSize: 13)),
+                        const SizedBox(height: 4),
+                        Text('v$_latestVersion', style: TextStyle(color: _hasUpdate ? Colors.orange : AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ] else ...[
+                    const Text('未检查', style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 24),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 120,
+                  child: ElevatedButton.icon(
+                    onPressed: _isCheckingUpdate ? null : _checkForUpdate,
+                    icon: _isCheckingUpdate
+                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.sync, size: 16),
+                    label: Text(_isCheckingUpdate ? '检查中...' : '检查更新'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor.withValues(alpha:0.15),
+                      foregroundColor: AppTheme.primaryColor,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      textStyle: TextStyle(fontSize: _fontSize * 0.93, fontFamily: _selectedFont.isEmpty ? null : _selectedFont),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(GlassConstants.radiusMedium)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: 120,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final uri = Uri.parse(releasesUrl);
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    icon: const Icon(Icons.open_in_new, size: 16),
+                    label: const Text('查看详情'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.successColor.withValues(alpha:0.15),
+                      foregroundColor: AppTheme.successColor,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      textStyle: TextStyle(fontSize: _fontSize * 0.93, fontFamily: _selectedFont.isEmpty ? null : _selectedFont),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(GlassConstants.radiusMedium)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        if (_hasUpdate && _latestVersion != null) ...[
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha:0.1),
+              borderRadius: BorderRadius.circular(GlassConstants.radiusMedium),
+              border: Border.all(color: Colors.orange.withValues(alpha:0.3)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.new_releases, color: Colors.orange, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '发现新版本 v$_latestVersion，点击"查看详情"获取更新',
+                    style: const TextStyle(color: Colors.orange, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _checkForUpdate() async {
+    setState(() {
+      _isCheckingUpdate = true;
+      _latestVersion = null;
+      _hasUpdate = false;
+    });
+
+    try {
+      final uri = Uri.parse('https://api.github.com/repos/LinYuanovo/JAV-Manager/releases/latest');
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final latestTag = data['tag_name'] as String? ?? '';
+        final latestVersionClean = latestTag.startsWith('v') ? latestTag.substring(1) : latestTag;
+
+        if (mounted) {
+          setState(() {
+            _latestVersion = latestVersionClean;
+            _isCheckingUpdate = false;
+
+            final currentParts = '1.4.1'.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+            final latestParts = latestVersionClean.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+
+            for (var i = 0; i < 3; i++) {
+              final current = i < currentParts.length ? currentParts[i] : 0;
+              final latest = i < latestParts.length ? latestParts[i] : 0;
+              if (latest > current) {
+                _hasUpdate = true;
+                break;
+              } else if (latest < current) {
+                break;
+              }
+            }
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isCheckingUpdate = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('检查更新失败，请稍后重试'), backgroundColor: AppTheme.errorColor),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isCheckingUpdate = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('检查更新失败: $e'), backgroundColor: AppTheme.errorColor),
+        );
+      }
+    }
+  }
+
   Widget _buildScraperSettingsSection() {
     return _buildSection(
       title: '刮削设置',
@@ -871,8 +1054,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   icon: Icons.refresh,
                   label: '立即扫描',
                   color: AppTheme.successColor,
-                  isLoading: _isScanning,
+                  isLoading: ref.watch(isScanningProvider),
                   onPressed: _scanNow,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _ActionButton(
+                  icon: Icons.block,
+                  label: '黑名单管理',
+                  color: Colors.orange,
+                  onPressed: () {
+                    showDialog(context: context, builder: (context) => const IgnoredCodesDialog());
+                  },
                 ),
               ),
             ],
@@ -979,6 +1173,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _scanNow() async {
+    // 防止重复扫描
+    if (ref.read(isScanningProvider)) return;
+
     if (_libraryPathController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -989,32 +1186,35 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       return;
     }
 
-    setState(() {
-      _isScanning = true;
-    });
+    ref.read(isScanningProvider.notifier).state = true;
+    ref.read(scanCancelProvider.notifier).state = false;
+    ref.read(scanProcessedProvider.notifier).state = 0;
+    ref.read(scanTotalProvider.notifier).state = 0;
 
     await _saveSettings();
 
-    final scanner = ref.read(mediaScannerServiceProvider);
-    await scanner.scanMediaLibrary(_libraryPathController.text);
+    try {
+      final scanner = ref.read(mediaScannerServiceProvider);
+      await scanner.scanMediaLibrary(_libraryPathController.text);
 
-    ref.invalidate(allVideosProvider);
-    ref.invalidate(allActorsProvider);
-    ref.invalidate(allTagsProvider);
-    ref.invalidate(allSeriesProvider);
-    ref.invalidate(allStudiosProvider);
+      ref.invalidate(allVideosProvider);
+      ref.invalidate(watchedVideosProvider);
+      ref.invalidate(favoriteVideosProvider);
+      ref.invalidate(allActorsProvider);
+      ref.invalidate(allTagsProvider);
+      ref.invalidate(allSeriesProvider);
+      ref.invalidate(allStudiosProvider);
 
-    setState(() {
-      _isScanning = false;
-    });
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('扫描完成'),
-          backgroundColor: AppTheme.successColor,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('扫描完成'),
+            backgroundColor: AppTheme.successColor,
+          ),
+        );
+      }
+    } finally {
+      ref.read(isScanningProvider.notifier).state = false;
     }
   }
 
@@ -1345,23 +1545,78 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
     setState(() => _isBackingUp = true);
 
-    final dbPath = await DatabaseHelper.getDatabasePath();
-    final service = ref.read(webdavServiceProvider);
-    final ok = await service.uploadBackup(
-      serverUrl: url,
-      username: username,
-      password: password,
-      localDbPath: dbPath,
-    );
+    try {
+      // 检查是否正在扫描，避免备份不完整的数据库
+      if (ref.read(isScanningProvider)) {
+        if (mounted) {
+          setState(() => _isBackingUp = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('正在扫描媒体库，请等待扫描完成后再备份'), backgroundColor: AppTheme.warningColor),
+          );
+        }
+        return;
+      }
 
-    if (mounted) {
-      setState(() => _isBackingUp = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(ok ? '备份成功' : '备份失败，请检查配置和服务器状态'),
-          backgroundColor: ok ? AppTheme.successColor : AppTheme.errorColor,
-        ),
+      final dbPath = await DatabaseHelper.getDatabasePath();
+      final dbFile = File(dbPath);
+      if (!dbFile.existsSync()) {
+        if (mounted) {
+          setState(() => _isBackingUp = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('数据库文件不存在'), backgroundColor: AppTheme.errorColor),
+          );
+        }
+        return;
+      }
+
+      // 收集设置
+      final prefs = ref.read(sharedPreferencesProvider);
+      final settingsJson = jsonEncode(prefs.toMap());
+
+      // 创建 zip 包
+      final archive = Archive();
+      final dbBytes = await dbFile.readAsBytes();
+      archive.addFile(ArchiveFile('database.db', dbBytes.length, dbBytes));
+      final settingsBytes = utf8.encode(settingsJson);
+      archive.addFile(ArchiveFile('settings.json', settingsBytes.length, settingsBytes));
+      final zipBytes = ZipEncoder().encode(archive);
+
+      // 写入临时 zip 文件
+      final tempDir = Directory.systemTemp;
+      final now = DateTime.now();
+      final timestamp = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
+      final tempZipPath = '${tempDir.path}${Platform.pathSeparator}jav_manager_$timestamp.zip';
+      await File(tempZipPath).writeAsBytes(zipBytes);
+
+      final service = ref.read(webdavServiceProvider);
+      final ok = await service.uploadBackup(
+        serverUrl: url,
+        username: username,
+        password: password,
+        localDbPath: tempZipPath,
       );
+
+      // 清理临时文件
+      final tempFile = File(tempZipPath);
+      if (await tempFile.exists()) await tempFile.delete();
+
+      if (mounted) {
+        setState(() => _isBackingUp = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(ok ? '备份成功' : '备份失败，请检查配置和服务器状态'),
+            backgroundColor: ok ? AppTheme.successColor : AppTheme.errorColor,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('WebDAV backup error: $e');
+      if (mounted) {
+        setState(() => _isBackingUp = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('备份失败: $e'), backgroundColor: AppTheme.errorColor),
+        );
+      }
     }
   }
 
@@ -1400,7 +1655,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         backgroundColor: AppTheme.surfaceColor,
         title: const Text('确认导入备份', style: TextStyle(color: AppTheme.textPrimary)),
         content: Text(
-          '导入备份将替换当前数据库。导入后需要重启应用才能生效。\n\n确定要导入 "$fileName" 吗？',
+          '导入备份将替换当前数据库和设置。导入后需要重启应用才能生效。\n\n确定要导入 "$fileName" 吗？',
           style: const TextStyle(color: AppTheme.textSecondary),
         ),
         actions: [
@@ -1435,17 +1690,66 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     bool ok = false;
     if (tempPath != null) {
       try {
-        // Close the live DB connection so we can replace the file
-        await DatabaseHelper.close();
-        // Replace the database file
-        final dbFile = File(dbPath);
-        if (dbFile.existsSync()) {
-          await dbFile.delete();
+        final tempFile = File(tempPath);
+        if (!tempFile.existsSync()) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('导入失败：临时文件不存在'), backgroundColor: AppTheme.errorColor),
+            );
+          }
+          return;
         }
-        await File(tempPath).rename(dbPath);
+
+        // 关闭数据库连接
+        await DatabaseHelper.close();
+
+        if (fileName.endsWith('.zip')) {
+          // 新格式：zip 包含数据库 + 设置
+          final zipBytes = await tempFile.readAsBytes();
+          final archive = ZipDecoder().decodeBytes(zipBytes);
+
+          for (final file in archive) {
+            if (file.name == 'database.db') {
+              final dbFile = File(dbPath);
+              if (dbFile.existsSync()) await dbFile.delete();
+              await dbFile.writeAsBytes(file.content as List<int>);
+            } else if (file.name == 'settings.json') {
+              // 还原设置
+              final settingsJson = String.fromCharCodes(file.content as List<int>);
+              final settingsMap = jsonDecode(settingsJson) as Map<String, dynamic>;
+              final prefs = ref.read(sharedPreferencesProvider);
+              for (final entry in settingsMap.entries) {
+                final value = entry.value;
+                if (value is String) {
+                  await prefs.setString(entry.key, value);
+                } else if (value is int) {
+                  await prefs.setInt(entry.key, value);
+                } else if (value is double) {
+                  await prefs.setDouble(entry.key, value);
+                } else if (value is bool) {
+                  await prefs.setBool(entry.key, value);
+                }
+              }
+            }
+          }
+        } else {
+          // 旧格式：纯 db 文件
+          final dbFile = File(dbPath);
+          if (dbFile.existsSync()) await dbFile.delete();
+          await tempFile.copy(dbPath);
+        }
+
+        // 清理临时文件
+        if (tempFile.existsSync()) await tempFile.delete();
+
         ok = true;
       } catch (e) {
-        debugPrint('Failed to replace DB: $e');
+        debugPrint('Failed to import backup: $e');
+        // 尝试清理临时文件
+        try {
+          final tempFile = File(tempPath);
+          if (tempFile.existsSync()) await tempFile.delete();
+        } catch (_) {}
       }
     }
 
@@ -1460,6 +1764,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _exportLocalBackup() async {
+    // 检查是否正在扫描，避免备份不完整的数据库
+    if (ref.read(isScanningProvider)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('正在扫描媒体库，请等待扫描完成后再备份'), backgroundColor: AppTheme.warningColor),
+        );
+      }
+      return;
+    }
+
     final dbPath = await DatabaseHelper.getDatabasePath();
     final dbFile = File(dbPath);
     if (!dbFile.existsSync()) {
@@ -1471,15 +1785,33 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       return;
     }
 
+    final now = DateTime.now();
+    final timestamp = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
+
     final result = await FilePicker.saveFile(
-      dialogTitle: '导出数据库备份',
-      fileName: 'jav_manager_backup_${DateTime.now().millisecondsSinceEpoch}.db',
+      dialogTitle: '导出备份',
+      fileName: 'jav_manager_$timestamp.zip',
     );
 
     if (result == null) return;
 
     try {
-      await dbFile.copy(result);
+      // 收集设置
+      final prefs = ref.read(sharedPreferencesProvider);
+      final settingsJson = jsonEncode(prefs.toMap());
+
+      // 创建 zip 包
+      final archive = Archive();
+      // 添加数据库文件
+      final dbBytes = await dbFile.readAsBytes();
+      archive.addFile(ArchiveFile('database.db', dbBytes.length, dbBytes));
+      // 添加设置文件
+      final settingsBytes = utf8.encode(settingsJson);
+      archive.addFile(ArchiveFile('settings.json', settingsBytes.length, settingsBytes));
+
+      final zipBytes = ZipEncoder().encode(archive);
+      await File(result).writeAsBytes(zipBytes);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('导出成功: $result'), backgroundColor: AppTheme.successColor),
@@ -1501,7 +1833,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.surfaceColor,
         title: const Text('确认导入备份', style: TextStyle(color: AppTheme.textPrimary)),
-        content: const Text('导入备份将替换当前数据库。导入后需要重启应用才能生效。', style: TextStyle(color: AppTheme.textSecondary)),
+        content: const Text('导入备份将替换当前数据库和设置。导入后需要重启应用才能生效。', style: TextStyle(color: AppTheme.textSecondary)),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('取消')),
           TextButton(
@@ -1515,8 +1847,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (confirmed != true) return;
 
     final result = await FilePicker.pickFiles(
-      dialogTitle: '选择数据库备份文件',
+      dialogTitle: '选择备份文件',
       allowMultiple: false,
+      allowedExtensions: ['zip', 'db'],
     );
 
     if (result == null || result.files.isEmpty) return;
@@ -1526,14 +1859,47 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
     try {
       final dbPath = await DatabaseHelper.getDatabasePath();
-      // Close the live DB connection
-      await DatabaseHelper.close();
-      // Replace with selected backup
-      final dbFile = File(dbPath);
-      if (dbFile.existsSync()) {
-        await dbFile.delete();
+
+      if (sourcePath.endsWith('.zip')) {
+        // 新格式：zip 包含数据库 + 设置
+        final zipBytes = await File(sourcePath).readAsBytes();
+        final archive = ZipDecoder().decodeBytes(zipBytes);
+
+        // 关闭数据库连接
+        await DatabaseHelper.close();
+
+        // 还原数据库
+        for (final file in archive) {
+          if (file.name == 'database.db') {
+            final dbFile = File(dbPath);
+            if (dbFile.existsSync()) await dbFile.delete();
+            await dbFile.writeAsBytes(file.content as List<int>);
+          } else if (file.name == 'settings.json') {
+            // 还原设置
+            final settingsJson = String.fromCharCodes(file.content as List<int>);
+            final settingsMap = jsonDecode(settingsJson) as Map<String, dynamic>;
+            final prefs = ref.read(sharedPreferencesProvider);
+            for (final entry in settingsMap.entries) {
+              final value = entry.value;
+              if (value is String) {
+                await prefs.setString(entry.key, value);
+              } else if (value is int) {
+                await prefs.setInt(entry.key, value);
+              } else if (value is double) {
+                await prefs.setDouble(entry.key, value);
+              } else if (value is bool) {
+                await prefs.setBool(entry.key, value);
+              }
+            }
+          }
+        }
+      } else {
+        // 旧格式：纯 db 文件
+        await DatabaseHelper.close();
+        final dbFile = File(dbPath);
+        if (dbFile.existsSync()) await dbFile.delete();
+        await File(sourcePath).copy(dbPath);
       }
-      await File(sourcePath).copy(dbPath);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

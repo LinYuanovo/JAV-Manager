@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/models.dart';
 import '../../../core/providers/providers.dart';
 import '../../theme/app_theme.dart';
-import '../home_page.dart';
+import '../../widgets/video_grid.dart';
 import '../actors/actor_detail_page.dart';
 import '../media/video_detail_dialog.dart';
 

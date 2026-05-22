@@ -184,15 +184,20 @@ class AutoTaskService {
       if (movedCount > 0) {
         final libPath = libraryPath;
         if (libPath != null && libPath.isNotEmpty) {
-          try {
-            await _mediaScannerService.scanMediaLibrary(libPath);
-            if (kDebugMode) debugPrint('[AutoMove] Media library refreshed after moving $movedCount videos');
-
-            // 通知 UI 层刷新
-            _onAutoMoveCompleteController.add(movedCount);
-          } catch (scanError) {
-            if (kDebugMode) debugPrint('[AutoMove] Error refreshing media library: $scanError');
+          // 检查是否已有扫描正在进行，避免重复扫描
+          if (_mediaScannerService.isScanning) {
+            if (kDebugMode) debugPrint('[AutoMove] Scan already in progress, skipping post-move scan');
+          } else {
+            try {
+              await _mediaScannerService.scanMediaLibrary(libPath);
+              if (kDebugMode) debugPrint('[AutoMove] Media library refreshed after moving $movedCount videos');
+            } catch (scanError) {
+              if (kDebugMode) debugPrint('[AutoMove] Error refreshing media library: $scanError');
+            }
           }
+
+          // 通知 UI 层刷新
+          _onAutoMoveCompleteController.add(movedCount);
         }
       }
     } catch (e) {
