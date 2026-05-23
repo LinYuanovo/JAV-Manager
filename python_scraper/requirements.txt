@@ -1,6 +1,7 @@
 # JavSP 刮削器依赖
 requests>=2.28.0
 lxml>=4.9.0
+lxml-html-clean>=0.4.0
 beautifulsoup4>=4.11.0
 Pillow>=9.3.0
 tqdm>=4.64.0
