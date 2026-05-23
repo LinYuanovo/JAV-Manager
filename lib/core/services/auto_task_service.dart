@@ -4,8 +4,10 @@ import 'package:path/path.dart' as path;
 import '../utils/app_settings.dart';
 import '../repositories/video_repository.dart';
 import 'media_scanner_service.dart';
+import 'app_logger.dart';
 
 class AutoTaskService {
+  final _log = AppLogger.instance;
   final VideoRepository _videoRepository;
   final MediaScannerService _mediaScannerService;
   final AppSettings _prefs;

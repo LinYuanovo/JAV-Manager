@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.2] - 2026-05-23
+
+### Fixed
+- 修复打包后刮削功能无法使用的问题（PyInstaller缺少tqdm模块）
+- 修复打包后刮削器路径查找失败（改用Platform.resolvedExecutable获取exe目录）
+
+### Added
+- 全局日志系统（AppLogger），日志写入exe目录/logs/，自动清理3天前日志
+- 刮削器、扫描服务、全局错误处理均接入日志，方便Release版本排错
+
+### Changed
+- 版本号升级至1.4.2
+
 ## [1.4.1] - 2026-05-23
 
 ### Added

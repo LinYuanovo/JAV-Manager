@@ -7,11 +7,15 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:window_manager/window_manager.dart';
 import 'core/utils/app_settings.dart';
 import 'core/providers/providers.dart';
+import 'core/services/app_logger.dart';
 import 'ui/pages/home_page.dart';
 import 'ui/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 初始化日志系统
+  await AppLogger.instance.init();
 
   _setupErrorHandling();
 
@@ -49,41 +53,20 @@ void main() async {
 }
 
 void _setupErrorHandling() {
-  FlutterError.onError = (FlutterErrorDetails details) {
-    debugPrint('══════════════════════════════════════════════════════════');
-    debugPrint('⚠️ FLUTTER RENDERING ERROR');
-    debugPrint('══════════════════════════════════════════════════════════');
-    debugPrint('Exception: ${details.exception}');
-    debugPrint('══════════════════════════════════════════════════════════');
-    debugPrint('Library: ${details.library}');
-    debugPrint('══════════════════════════════════════════════════════════');
-    debugPrint('Context: ${details.context}');
-    debugPrint('══════════════════════════════════════════════════════════');
-    debugPrint('StackTrace:\n${details.stack}');
-    debugPrint('══════════════════════════════════════════════════════════');
+  final log = AppLogger.instance;
 
+  FlutterError.onError = (FlutterErrorDetails details) {
+    log.error('FlutterError', details.exceptionAsString(), null, details.stack);
     FlutterError.presentError(details);
   };
 
   PlatformDispatcher.instance.onError = (error, stackTrace) {
-    debugPrint('══════════════════════════════════════════════════════════');
-    debugPrint('⚠️ PLATFORM DISPATCHER ERROR');
-    debugPrint('══════════════════════════════════════════════════════════');
-    debugPrint('Error: $error');
-    debugPrint('══════════════════════════════════════════════════════════');
-    debugPrint('StackTrace:\n$stackTrace');
-    debugPrint('══════════════════════════════════════════════════════════');
+    log.error('PlatformError', error.toString(), error, stackTrace);
     return true;
   };
 
   runZonedGuarded(() {}, (error, stackTrace) {
-    debugPrint('══════════════════════════════════════════════════════════');
-    debugPrint('⚠️ RUN ZONED GUARDED ERROR');
-    debugPrint('══════════════════════════════════════════════════════════');
-    debugPrint('Error: $error');
-    debugPrint('══════════════════════════════════════════════════════════');
-    debugPrint('StackTrace:\n$stackTrace');
-    debugPrint('══════════════════════════════════════════════════════════');
+    log.error('UnhandledError', error.toString(), error, stackTrace);
   });
 }
 

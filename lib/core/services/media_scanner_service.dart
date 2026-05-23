@@ -8,8 +8,10 @@ import '../models/models.dart';
 import '../repositories/video_repository.dart';
 import '../repositories/actor_repository.dart';
 import '../repositories/category_repository.dart';
+import 'app_logger.dart';
 
 class MediaScannerService {
+  final _log = AppLogger.instance;
   final VideoRepository _videoRepository;
   final ActorRepository _actorRepository;
   final CategoryRepository _categoryRepository;
@@ -49,15 +51,12 @@ class MediaScannerService {
   Future<void> scanMediaLibrary(String libraryPath) async {
     // 防止重复扫描
     if (_isScanning) {
-      if (kDebugMode) debugPrint('[Scan] Already scanning, skipping duplicate request');
+      _log.info('Scan', 'Already scanning, skipping duplicate request');
       return;
     }
     _isScanning = true;
 
-    if (kDebugMode) {
-      debugPrint('═══ Starting Media Scan ═══');
-      debugPrint('Library Path: $libraryPath');
-    }
+    _log.info('Scan', 'Starting Media Scan, libraryPath=$libraryPath');
 
     try {
       final organizedPath = path.join(libraryPath, '#整理完成');
@@ -75,9 +74,7 @@ class MediaScannerService {
 
       final scanDir = Directory(scanPath);
       if (!await scanDir.exists()) {
-        if (kDebugMode) {
-          debugPrint('📁 Scan directory does not exist: $scanPath');
-        }
+        _log.warning('Scan', 'Scan directory does not exist: $scanPath');
         return;
       }
 
@@ -176,9 +173,7 @@ class MediaScannerService {
         needProcess[filePath] = existingVideo;
       }
 
-      if (kDebugMode) {
-        debugPrint('[Scan] ${mp4Files.length} files: ${needProcess.length} need processing, $skippedCount skipped');
-      }
+      _log.info('Scan', '${mp4Files.length} files: ${needProcess.length} need processing, $skippedCount skipped');
 
       // ═══ 第二阶段：分批并行解析NFO文件 ═══
       final nfoDataMap = <String, Map<String, dynamic>?>{};
@@ -290,9 +285,7 @@ class MediaScannerService {
       // 最终刷新
       onVideoProcessed?.call();
 
-      if (kDebugMode) {
-        debugPrint('[Scan] Completed processing all ${mp4Files.length} files (processed=$processedCount, skipped=$skippedCount)');
-      }
+      _log.info('Scan', 'Completed: ${mp4Files.length} files (processed=$processedCount, skipped=$skippedCount)');
 
       final scannedSet = mp4Files.toSet();
       for (final video in existingVideos) {
@@ -320,18 +313,9 @@ class MediaScannerService {
       // 清理没有关联视频且未收藏的演员及其本地头像
       await _cleanupOrphanedActors();
 
-      if (kDebugMode) {
-        debugPrint('✅ Media Scan Complete');
-        debugPrint('Scanned ${mp4Files.length} files');
-        debugPrint('═══════════════════════════════');
-      }
+      _log.info('Scan', 'Media Scan Complete, scanned ${mp4Files.length} files');
     } catch (e, stackTrace) {
-      if (kDebugMode) {
-        debugPrint('═══ FATAL ERROR in Media Scan ═══');
-        debugPrint('Error: $e');
-        debugPrint('StackTrace: $stackTrace');
-        debugPrint('═══════════════════════════════════════');
-      }
+      _log.error('Scan', 'FATAL ERROR in Media Scan', e, stackTrace);
       rethrow;
     } finally {
       _isScanning = false;

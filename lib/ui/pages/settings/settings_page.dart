@@ -599,7 +599,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Widget _buildAboutSection() {
-    const currentVersion = '1.4.1';
+    const currentVersion = '1.4.2';
     const githubRepoUrl = 'https://github.com/LinYuanovo/JAV-Manager';
     const releasesUrl = '$githubRepoUrl/releases';
 
@@ -734,7 +734,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             _latestVersion = latestVersionClean;
             _isCheckingUpdate = false;
 
-            final currentParts = '1.4.1'.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+            final currentParts = '1.4.2'.split('.').map((e) => int.tryParse(e) ?? 0).toList();
             final latestParts = latestVersionClean.split('.').map((e) => int.tryParse(e) ?? 0).toList();
 
             for (var i = 0; i < 3; i++) {

@@ -37,6 +37,7 @@ a = Analysis(
         'hashlib',
         'shutil',
         'copy',
+        'tqdm',
     ],
     hookspath=[],
     hooksconfig={},
