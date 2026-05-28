@@ -41,8 +41,9 @@ class AppSettings {
     try {
       final file = File(_filePath);
       if (await file.exists()) {
-        final raw = await file.readAsString();
-        if (raw.isNotEmpty) {
+        final bytes = await file.readAsBytes();
+        if (bytes.isNotEmpty) {
+          final raw = utf8.decode(bytes, allowMalformed: true);
           _data = jsonDecode(raw) as Map<String, dynamic>;
         }
       }
@@ -60,9 +61,15 @@ class AppSettings {
       if (!await dir.exists()) {
         await dir.create(recursive: true);
       }
+      final content = utf8.encode(jsonEncode(_data));
       final tempFile = File('$_filePath.tmp');
-      await tempFile.writeAsString(jsonEncode(_data), flush: true);
-      await tempFile.rename(_filePath);
+      await tempFile.writeAsBytes(content, flush: true);
+      try {
+        await tempFile.rename(_filePath);
+      } catch (_) {
+        await file.writeAsBytes(content, flush: true);
+        try { await tempFile.delete(); } catch (_) {}
+      }
       _dirty = false;
     } catch (e) {
       debugPrint('[AppSettings] Save error: $e');

@@ -25,6 +25,8 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage>
   int? _fixedColumnCount;
   CategorySortField _sortField = CategorySortField.name;
   CategorySortOrder _sortOrder = CategorySortOrder.asc;
+  PaginationMode _paginationMode = PaginationMode.waterfall;
+  int _currentPage = 1;
 
   @override
   void initState() {
@@ -55,6 +57,8 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage>
         final sortOrderIndex = prefs.getInt('category_sort_order') ?? 0;
         _sortField = CategorySortField.values[sortFieldIndex.clamp(0, CategorySortField.values.length - 1)];
         _sortOrder = CategorySortOrder.values[sortOrderIndex.clamp(0, CategorySortOrder.values.length - 1)];
+        _paginationMode = PaginationMode.values[(prefs.getInt('category_pagination_mode') ?? 0).clamp(0, PaginationMode.values.length - 1)];
+        _currentPage = prefs.getInt('category_current_page') ?? 1;
       });
       _cleanupOrphanedCategories();
     });
@@ -99,6 +103,12 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage>
                 fixedColumnCount: _fixedColumnCount,
                 sortField: _sortField,
                 sortOrder: _sortOrder,
+                paginationMode: _paginationMode,
+                currentPage: _currentPage,
+                onPageChanged: (page) => setState(() {
+                  _currentPage = page;
+                  ref.read(sharedPreferencesProvider).setInt('category_current_page', page);
+                }),
               ),
               _CategoryListView(
                 provider: allSeriesProvider,
@@ -107,6 +117,12 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage>
                 fixedColumnCount: _fixedColumnCount,
                 sortField: _sortField,
                 sortOrder: _sortOrder,
+                paginationMode: _paginationMode,
+                currentPage: _currentPage,
+                onPageChanged: (page) => setState(() {
+                  _currentPage = page;
+                  ref.read(sharedPreferencesProvider).setInt('category_current_page', page);
+                }),
               ),
               _CategoryListView(
                 provider: allStudiosProvider,
@@ -115,6 +131,12 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage>
                 fixedColumnCount: _fixedColumnCount,
                 sortField: _sortField,
                 sortOrder: _sortOrder,
+                paginationMode: _paginationMode,
+                currentPage: _currentPage,
+                onPageChanged: (page) => setState(() {
+                  _currentPage = page;
+                  ref.read(sharedPreferencesProvider).setInt('category_current_page', page);
+                }),
               ),
             ],
           ),
@@ -207,6 +229,8 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage>
             ],
           ),
           const SizedBox(width: 12),
+          _buildPaginationModeButton(),
+          const SizedBox(width: 12),
           _buildColumnCountControl(),
         ],
       ),
@@ -220,6 +244,26 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage>
       case 2: return '搜索片商...';
       default: return '搜索...';
     }
+  }
+
+  Widget _buildPaginationModeButton() {
+    final isPaginated = _paginationMode == PaginationMode.paginated;
+    return IconButton(
+      icon: Icon(
+        isPaginated ? Icons.view_agenda : Icons.grid_view,
+        color: AppTheme.textSecondary,
+      ),
+      tooltip: isPaginated ? '切换为瀑布流' : '切换为分页',
+      onPressed: () {
+        setState(() {
+          _paginationMode = isPaginated ? PaginationMode.waterfall : PaginationMode.paginated;
+          _currentPage = 1;
+        });
+        final prefs = ref.read(sharedPreferencesProvider);
+        prefs.setInt('category_pagination_mode', _paginationMode.index);
+        prefs.setInt('category_current_page', 1);
+      },
+    );
   }
 
   Widget _buildColumnCountControl() {
@@ -298,6 +342,9 @@ class _CategoryListView extends ConsumerStatefulWidget {
   final int? fixedColumnCount;
   final CategorySortField sortField;
   final CategorySortOrder sortOrder;
+  final PaginationMode paginationMode;
+  final int currentPage;
+  final Function(int)? onPageChanged;
 
   const _CategoryListView({
     required this.provider,
@@ -306,6 +353,9 @@ class _CategoryListView extends ConsumerStatefulWidget {
     this.fixedColumnCount,
     required this.sortField,
     required this.sortOrder,
+    this.paginationMode = PaginationMode.waterfall,
+    this.currentPage = 1,
+    this.onPageChanged,
   });
 
   @override
@@ -335,6 +385,9 @@ class _CategoryListViewState extends ConsumerState<_CategoryListView>
           categories: filtered,
           isFixedColumnCount: widget.isFixedColumnCount,
           fixedColumnCount: widget.fixedColumnCount,
+          paginationMode: widget.paginationMode,
+          currentPage: widget.currentPage,
+          onPageChanged: widget.onPageChanged,
         );
       },
       loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
@@ -379,12 +432,34 @@ class _CategoryGrid extends StatelessWidget {
   final List<Category> categories;
   final bool isFixedColumnCount;
   final int? fixedColumnCount;
+  final PaginationMode paginationMode;
+  final int currentPage;
+  final Function(int)? onPageChanged;
 
   const _CategoryGrid({
     required this.categories,
     this.isFixedColumnCount = false,
     this.fixedColumnCount,
+    this.paginationMode = PaginationMode.waterfall,
+    this.currentPage = 1,
+    this.onPageChanged,
   });
+
+  List<Category> get _paginatedCategories {
+    if (paginationMode == PaginationMode.waterfall) {
+      return categories;
+    }
+    const pageSize = 5;
+    final start = (currentPage - 1) * pageSize;
+    final end = start + pageSize;
+    return categories.sublist(start.clamp(0, categories.length), end.clamp(0, categories.length));
+  }
+
+  int get _totalPages {
+    if (paginationMode == PaginationMode.waterfall) return 1;
+    const pageSize = 5;
+    return (categories.length / pageSize).ceil().clamp(1, 9999);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -395,23 +470,37 @@ class _CategoryGrid extends StatelessWidget {
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final crossAxisCount = isFixedColumnCount && fixedColumnCount != null
-            ? fixedColumnCount!
-            : (constraints.maxWidth / 200).floor().clamp(2, 8);
-        return GridView.builder(
-          padding: const EdgeInsets.all(16),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            childAspectRatio: 2.5,
-            crossAxisSpacing: GlassConstants.spacingMedium,
-            mainAxisSpacing: GlassConstants.spacingMedium,
+    final displayCategories = _paginatedCategories;
+
+    return Column(
+      children: [
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final crossAxisCount = isFixedColumnCount && fixedColumnCount != null
+                  ? fixedColumnCount!
+                  : (constraints.maxWidth / 200).floor().clamp(2, 8);
+              return GridView.builder(
+                padding: const EdgeInsets.all(16),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  childAspectRatio: 2.5,
+                  crossAxisSpacing: GlassConstants.spacingMedium,
+                  mainAxisSpacing: GlassConstants.spacingMedium,
+                ),
+                itemCount: displayCategories.length,
+                itemBuilder: (context, index) => _CategoryCard(category: displayCategories[index]),
+              );
+            },
           ),
-          itemCount: categories.length,
-          itemBuilder: (context, index) => _CategoryCard(category: categories[index]),
-        );
-      },
+        ),
+        if (paginationMode == PaginationMode.paginated && _totalPages > 1)
+          _CategoryPaginationBar(
+            currentPage: currentPage,
+            totalPages: _totalPages,
+            onPageChanged: onPageChanged ?? (_) {},
+          ),
+      ],
     );
   }
 }
@@ -544,5 +633,125 @@ class _CategoryCardState extends ConsumerState<_CategoryCard>
       default:
         return '[未命名]';
     }
+  }
+}
+
+class _CategoryPaginationBar extends StatefulWidget {
+  final int currentPage;
+  final int totalPages;
+  final Function(int) onPageChanged;
+
+  const _CategoryPaginationBar({
+    required this.currentPage,
+    required this.totalPages,
+    required this.onPageChanged,
+  });
+
+  @override
+  State<_CategoryPaginationBar> createState() => _CategoryPaginationBarState();
+}
+
+class _CategoryPaginationBarState extends State<_CategoryPaginationBar> {
+  late TextEditingController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = TextEditingController(text: '${widget.currentPage}');
+  }
+
+  @override
+  void didUpdateWidget(_CategoryPaginationBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentPage != widget.currentPage) {
+      _pageController.text = '${widget.currentPage}';
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassContainer(
+      margin: const EdgeInsets.all(GlassConstants.spacingMedium),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left),
+            onPressed: widget.currentPage > 1
+                ? () => widget.onPageChanged(widget.currentPage - 1)
+                : null,
+            color: widget.currentPage > 1 ? AppTheme.primaryColor : AppTheme.textSecondary.withValues(alpha: 0.3),
+          ),
+          const SizedBox(width: 16),
+          Text(
+            '${widget.currentPage} / ${widget.totalPages}',
+            style: const TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(width: 16),
+          IconButton(
+            icon: const Icon(Icons.chevron_right),
+            onPressed: widget.currentPage < widget.totalPages
+                ? () => widget.onPageChanged(widget.currentPage + 1)
+                : null,
+            color: widget.currentPage < widget.totalPages ? AppTheme.primaryColor : AppTheme.textSecondary.withValues(alpha: 0.3),
+          ),
+          const SizedBox(width: 24),
+          SizedBox(
+            width: 60,
+            height: 36,
+            child: TextField(
+              controller: _pageController,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              decoration: InputDecoration(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.5),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppTheme.borderColor.withValues(alpha: 0.3)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppTheme.borderColor.withValues(alpha: 0.3)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppTheme.primaryColor),
+                ),
+              ),
+              onSubmitted: (value) {
+                final page = int.tryParse(value);
+                if (page != null && page >= 1 && page <= widget.totalPages) {
+                  widget.onPageChanged(page);
+                } else {
+                  _pageController.text = '${widget.currentPage}';
+                }
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '页',
+            style: TextStyle(
+              color: AppTheme.textSecondary,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

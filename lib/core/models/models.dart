@@ -15,6 +15,13 @@ enum SortMode {
   recentlyWatchedAsc,
   recentlyWatchedDesc,
   random,
+  smart,
+  smartDesc,
+}
+
+enum PaginationMode {
+  waterfall,
+  paginated,
 }
 
 class Video {
@@ -30,6 +37,7 @@ class Video {
   final DateTime? lastWatchedTime;
   final bool isFavorite;
   final bool isWatched;
+  final bool isDeleted;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final List<Actor> actors;
@@ -48,6 +56,7 @@ class Video {
     this.lastWatchedTime,
     this.isFavorite = false,
     this.isWatched = false,
+    this.isDeleted = false,
     this.createdAt,
     this.updatedAt,
     this.actors = const [],
@@ -70,6 +79,7 @@ class Video {
           : null,
       isFavorite: (map['is_favorite'] as int? ?? 0) == 1,
       isWatched: (map['is_watched'] as int? ?? 0) == 1,
+      isDeleted: (map['is_deleted'] as int? ?? 0) == 1,
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'] as String)
           : null,
@@ -93,6 +103,7 @@ class Video {
       'last_watched_time': lastWatchedTime?.toIso8601String(),
       'is_favorite': isFavorite ? 1 : 0,
       'is_watched': isWatched ? 1 : 0,
+      'is_deleted': isDeleted ? 1 : 0,
     };
   }
 
@@ -109,6 +120,7 @@ class Video {
     DateTime? lastWatchedTime,
     bool? isFavorite,
     bool? isWatched,
+    bool? isDeleted,
     DateTime? createdAt,
     DateTime? updatedAt,
     List<Actor>? actors,
@@ -127,6 +139,7 @@ class Video {
       lastWatchedTime: lastWatchedTime ?? this.lastWatchedTime,
       isFavorite: isFavorite ?? this.isFavorite,
       isWatched: isWatched ?? this.isWatched,
+      isDeleted: isDeleted ?? this.isDeleted,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       actors: actors ?? this.actors,

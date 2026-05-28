@@ -92,6 +92,43 @@ class _VideoDetailDialogState extends ConsumerState<VideoDetailDialog>
     final leftWidth = screenSize.width * 0.85 * 0.7;
     final pureMode = ref.watch(pureModeProvider);
 
+    if (widget.video.isDeleted) {
+      return SizedBox(
+        width: leftWidth,
+        child: Container(
+          color: Colors.white,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '该影片已被删除',
+                    style: TextStyle(
+                      color: AppTheme.warningColor,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '只能展示部分信息',
+                    style: TextStyle(
+                      color: AppTheme.warningColor.withValues(alpha: 0.8),
+                      fontSize: 18,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return SizedBox(
       width: leftWidth,
       child: Stack(
@@ -382,24 +419,27 @@ class _VideoDetailDialogState extends ConsumerState<VideoDetailDialog>
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              gradient: AppTheme.accentGradient,
+              gradient: widget.video.isDeleted ? null : AppTheme.accentGradient,
+              color: widget.video.isDeleted ? AppTheme.textSecondary.withValues(alpha: 0.3) : null,
               borderRadius: BorderRadius.circular(GlassConstants.radiusSmall),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.accentColor.withValues(alpha:0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              boxShadow: widget.video.isDeleted
+                  ? []
+                  : [
+                      BoxShadow(
+                        color: AppTheme.accentColor.withValues(alpha:0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
             ),
             child: ElevatedButton.icon(
-              onPressed: _playVideo,
+              onPressed: widget.video.isDeleted ? null : _playVideo,
               icon: const Icon(Icons.play_arrow, size: 22),
-              label: const Text('播放', style: TextStyle(fontSize: 16)),
+              label: Text(widget.video.isDeleted ? '无法播放' : '播放', style: const TextStyle(fontSize: 16)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
-                foregroundColor: Colors.white,
+                foregroundColor: widget.video.isDeleted ? AppTheme.textSecondary : Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(GlassConstants.radiusSmall)),
               ),

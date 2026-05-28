@@ -170,6 +170,8 @@ class _FavoriteVideosTabState extends ConsumerState<_FavoriteVideosTab>
     final videosAsync = ref.watch(favoriteVideosProvider);
     final viewMode = ref.watch(favoriteViewModeProvider);
     final sortMode = ref.watch(favoriteSortModeProvider);
+    final paginationMode = ref.watch(favoritesPaginationModeProvider);
+    final currentPage = ref.watch(favoritesCurrentPageProvider);
 
     return videosAsync.when(
       data: (videos) {
@@ -200,6 +202,12 @@ class _FavoriteVideosTabState extends ConsumerState<_FavoriteVideosTab>
                 fixedColumnCount: ref.watch(favoriteFixedColumnCountProvider),
                 onVideoTap: (video) => _showVideoDetail(context, video),
                 onFavoriteToggle: (video) => _toggleFavorite(ref, video),
+                paginationMode: paginationMode,
+                currentPage: currentPage,
+                onPageChanged: (page) {
+                  ref.read(favoritesCurrentPageProvider.notifier).state = page;
+                  ref.read(sharedPreferencesProvider).setInt('favorites_current_page', page);
+                },
               ),
             ),
           ],
@@ -226,6 +234,8 @@ class _FavoriteVideosTabState extends ConsumerState<_FavoriteVideosTab>
               ref.read(favoriteSortModeProvider.notifier).state = value;
               final prefs = ref.read(sharedPreferencesProvider);
               prefs.setInt('favorite_sort_mode', value.index);
+              ref.read(favoritesCurrentPageProvider.notifier).state = 1;
+              prefs.setInt('favorites_current_page', 1);
             },
             itemBuilder: (_) => const [
               PopupMenuItem(value: SortMode.titleAsc, child: Text('标题 A-Z')),
@@ -243,6 +253,8 @@ class _FavoriteVideosTabState extends ConsumerState<_FavoriteVideosTab>
               ref.read(favoriteViewModeProvider.notifier).state = value;
               final prefs = ref.read(sharedPreferencesProvider);
               prefs.setInt('favorite_view_mode', value.index);
+              ref.read(favoritesCurrentPageProvider.notifier).state = 1;
+              prefs.setInt('favorites_current_page', 1);
             },
             itemBuilder: (_) => const [
               PopupMenuItem(value: ViewMode.poster, child: Text('海报')),
@@ -251,6 +263,7 @@ class _FavoriteVideosTabState extends ConsumerState<_FavoriteVideosTab>
               PopupMenuItem(value: ViewMode.list, child: Text('列表')),
             ],
           ),
+          _buildPaginationModeButton(),
           const Spacer(),
           Text(
             '${filtered.length} 个影片',
@@ -259,6 +272,52 @@ class _FavoriteVideosTabState extends ConsumerState<_FavoriteVideosTab>
         ],
       ),
     );
+  }
+
+  Widget _buildPaginationModeButton() {
+    final paginationMode = ref.watch(favoritesPaginationModeProvider);
+    final isPaginated = paginationMode == PaginationMode.paginated;
+    return IconButton(
+      icon: Icon(
+        isPaginated ? Icons.view_agenda : Icons.grid_view,
+        color: AppTheme.textSecondary,
+      ),
+      tooltip: isPaginated ? '切换为瀑布流' : '切换为分页',
+      onPressed: () {
+        final newMode = isPaginated ? PaginationMode.waterfall : PaginationMode.paginated;
+        ref.read(favoritesPaginationModeProvider.notifier).state = newMode;
+        ref.read(sharedPreferencesProvider).setInt('favorites_pagination_mode', newMode.index);
+        ref.read(favoritesCurrentPageProvider.notifier).state = 1;
+        ref.read(sharedPreferencesProvider).setInt('favorites_current_page', 1);
+      },
+    );
+  }
+
+  int _calculatePageSize(BuildContext context, ViewMode viewMode) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final headerHeight = 80.0;
+    final paginationBarHeight = 60.0;
+    final availableHeight = screenHeight - headerHeight - paginationBarHeight - 40;
+
+    switch (viewMode) {
+      case ViewMode.poster:
+        final itemHeight = 260.0;
+        final rows = (availableHeight / itemHeight).floor().clamp(1, 10);
+        final columns = 5;
+        return rows * columns;
+      case ViewMode.posterWithTitle:
+        final itemHeight = 290.0;
+        final rows = (availableHeight / itemHeight).floor().clamp(1, 10);
+        final columns = 4;
+        return rows * columns;
+      case ViewMode.posterWall:
+        final itemHeight = 350.0;
+        final rows = (availableHeight / itemHeight).floor().clamp(1, 10);
+        final columns = 2;
+        return rows * columns;
+      case ViewMode.list:
+        return 5;
+    }
   }
 
   void _showVideoDetail(BuildContext context, Video video) {

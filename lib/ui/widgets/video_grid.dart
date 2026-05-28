@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/providers.dart';
 import '../../core/models/models.dart';
+import '../../core/services/smart_sort_service.dart';
 import '../theme/app_theme.dart';
 import 'mosaic_image.dart';
 
@@ -16,6 +17,10 @@ class VideoGrid extends ConsumerWidget {
   final Function(Video)? onVideoDoubleTap;
   final Function(Video, Offset)? onVideoSecondaryTap;
   final Function(Video)? onFavoriteToggle;
+  final PaginationMode paginationMode;
+  final int currentPage;
+  final int? pageSize;
+  final Function(int)? onPageChanged;
 
   const VideoGrid({
     super.key,
@@ -27,7 +32,44 @@ class VideoGrid extends ConsumerWidget {
     this.onVideoDoubleTap,
     this.onVideoSecondaryTap,
     this.onFavoriteToggle,
+    this.paginationMode = PaginationMode.waterfall,
+    this.currentPage = 1,
+    this.pageSize,
+    this.onPageChanged,
   });
+
+  List<Video> _getPaginatedVideos(int effectivePageSize) {
+    if (paginationMode == PaginationMode.waterfall || effectivePageSize <= 0) {
+      return videos;
+    }
+    final start = (currentPage - 1) * effectivePageSize;
+    final end = start + effectivePageSize;
+    return videos.sublist(start.clamp(0, videos.length), end.clamp(0, videos.length));
+  }
+
+  int _getTotalPages(int effectivePageSize) {
+    if (effectivePageSize <= 0) return 1;
+    return (videos.length / effectivePageSize).ceil().clamp(1, 9999);
+  }
+
+  int _calculateEffectivePageSize(double availableHeight, double availableWidth, int crossAxisCount) {
+    final spacing = GlassConstants.spacingMedium;
+    final itemWidth = (availableWidth - spacing * (crossAxisCount + 1)) / crossAxisCount;
+    double itemHeight;
+    switch (viewMode) {
+      case ViewMode.posterWall:
+        itemHeight = itemWidth / 1.5 + 40;
+        break;
+      case ViewMode.posterWithTitle:
+        itemHeight = itemWidth / 0.7 + 24;
+        break;
+      default:
+        itemHeight = itemWidth / 0.7;
+        break;
+    }
+    final rows = ((availableHeight - spacing) / (itemHeight + spacing)).floor().clamp(1, 20);
+    return rows * crossAxisCount;
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -66,12 +108,28 @@ class VideoGrid extends ConsumerWidget {
           fixedColumnCount,
         );
 
-        switch (viewMode) {
-          case ViewMode.list:
-            return _buildListView(fontSize);
-          default:
-            return _buildGridView(crossAxisCount, fontSize, enableAnimation);
-        }
+        final effectivePageSize = paginationMode == PaginationMode.paginated
+            ? (pageSize ?? _calculateEffectivePageSize(constraints.maxHeight, constraints.maxWidth, crossAxisCount))
+            : 0;
+        final displayVideos = _getPaginatedVideos(effectivePageSize);
+        final totalPages = _getTotalPages(effectivePageSize);
+
+        return Column(
+          children: [
+            Expanded(
+              child: switch (viewMode) {
+                ViewMode.list => _buildListView(displayVideos, fontSize),
+                _ => _buildGridView(displayVideos, crossAxisCount, fontSize, enableAnimation),
+              },
+            ),
+            if (paginationMode == PaginationMode.paginated && totalPages > 1)
+              _PaginationBar(
+                currentPage: currentPage,
+                totalPages: totalPages,
+                onPageChanged: onPageChanged ?? (_) {},
+              ),
+          ],
+        );
       },
     );
   }
@@ -98,7 +156,7 @@ class VideoGrid extends ConsumerWidget {
     }
   }
 
-  Widget _buildGridView(int crossAxisCount, double fontSize, bool enableAnimation) {
+  Widget _buildGridView(List<Video> displayVideos, int crossAxisCount, double fontSize, bool enableAnimation) {
     final ratio = viewMode == ViewMode.posterWall ? 1.5 : 0.7;
     return GridView.builder(
       padding: const EdgeInsets.all(GlassConstants.spacingMedium),
@@ -108,10 +166,10 @@ class VideoGrid extends ConsumerWidget {
         crossAxisSpacing: GlassConstants.spacingMedium,
         mainAxisSpacing: GlassConstants.spacingMedium,
       ),
-      itemCount: videos.length,
+      itemCount: displayVideos.length,
       itemBuilder: (context, index) {
         final card = _VideoCard(
-          video: videos[index],
+          video: displayVideos[index],
           viewMode: viewMode,
           onTap: onVideoTap,
           onDoubleTap: onVideoDoubleTap,
@@ -127,13 +185,13 @@ class VideoGrid extends ConsumerWidget {
     );
   }
 
-  Widget _buildListView(double fontSize) {
+  Widget _buildListView(List<Video> displayVideos, double fontSize) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: videos.length,
+      itemCount: displayVideos.length,
       itemBuilder: (context, index) {
         return _VideoListItem(
-          video: videos[index],
+          video: displayVideos[index],
           onTap: onVideoTap,
           onDoubleTap: onVideoDoubleTap,
           onSecondaryTap: onVideoSecondaryTap,
@@ -297,6 +355,25 @@ class _VideoCardState extends ConsumerState<_VideoCard>
   }
 
   Widget _buildWallCard() {
+    if (widget.video.isDeleted) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: _buildDeletedPlaceholder()),
+          const SizedBox(height: 4),
+          Text(
+            widget.video.title ?? '未知标题',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: widget.fontSize * 0.93,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -377,6 +454,9 @@ class _VideoCardState extends ConsumerState<_VideoCard>
   }
 
   Widget _buildPoster(bool showTitle) {
+    if (widget.video.isDeleted) {
+      return _buildDeletedPlaceholder();
+    }
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(GlassConstants.radiusLarge),
@@ -414,6 +494,50 @@ class _VideoCardState extends ConsumerState<_VideoCard>
     );
   }
 
+  Widget _buildDeletedPlaceholder() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(GlassConstants.radiusLarge),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '该影片已被删除',
+                style: TextStyle(
+                  color: AppTheme.warningColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '只能展示部分信息',
+                style: TextStyle(
+                  color: AppTheme.warningColor.withValues(alpha: 0.8),
+                  fontSize: 12,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildFavoriteButton() {
     return GestureDetector(
       onTap: () => widget.onFavoriteToggle?.call(widget.video),
@@ -437,6 +561,49 @@ class _VideoCardState extends ConsumerState<_VideoCard>
   Widget _buildPureModeCard() {
     final showTitle = widget.viewMode == ViewMode.posterWithTitle;
     final showWall = widget.viewMode == ViewMode.posterWall;
+
+    if (widget.video.isDeleted) {
+      if (showWall) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: _buildDeletedPlaceholder()),
+            const SizedBox(height: 8),
+            Text(
+              widget.video.extractCode(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: widget.fontSize * 0.93,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        );
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: _buildDeletedPlaceholder()),
+          if (showTitle) ...[
+            const SizedBox(height: 8),
+            Text(
+              widget.video.extractCode(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: widget.fontSize * 0.93,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ],
+      );
+    }
 
     if (showWall) {
       return _buildPureModeWallCard();
@@ -545,6 +712,10 @@ class _VideoListItem extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pureMode = ref.watch(pureModeProvider);
+
+    if (video.isDeleted) {
+      return _buildDeletedListItem();
+    }
 
     if (pureMode) {
       return GestureDetector(
@@ -723,10 +894,94 @@ class _VideoListItem extends ConsumerWidget {
       ),
     );
   }
+
+  Widget _buildDeletedListItem() {
+    return GlassContainer(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          Container(
+            width: 360,
+            height: 202,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '该影片已被删除',
+                      style: TextStyle(
+                        color: AppTheme.warningColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '只能展示部分信息',
+                      style: TextStyle(
+                        color: AppTheme.warningColor.withValues(alpha: 0.8),
+                        fontSize: 12,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              video.title ?? '未知标题',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: fontSize,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          if (video.isWatched)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppTheme.successColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.visibility, size: 14, color: AppTheme.successColor),
+                  const SizedBox(width: 4),
+                  Text('${video.watchCount}', style: const TextStyle(color: AppTheme.successColor, fontSize: 12)),
+                ],
+              ),
+            ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: Icon(
+              video.isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: video.isFavorite ? AppTheme.accentColor : AppTheme.textSecondary,
+            ),
+            onPressed: () => onFavoriteToggle?.call(video),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 List<Video> sortVideos(List<Video> videos, SortMode mode,
-    {int randomKey = 0, bool separateFavorites = false}) {
+    {int randomKey = 0, bool separateFavorites = false, SmartSortWeights? smartWeights}) {
   final sorted = List<Video>.from(videos);
 
   void applySort(List<Video> list) {
@@ -756,10 +1011,26 @@ List<Video> sortVideos(List<Video> videos, SortMode mode,
           return b.lastWatchedTime!.compareTo(a.lastWatchedTime!);
         });
         break;
+      case SortMode.smart:
+      case SortMode.smartDesc:
+        if (smartWeights != null) {
+          final service = SmartSortService();
+          final isAsc = mode == SortMode.smartDesc;
+          list.sort((a, b) {
+            final scoreA = service.calculateVideoScore(a, smartWeights);
+            final scoreB = service.calculateVideoScore(b, smartWeights);
+            final comparison = isAsc
+                ? scoreA.compareTo(scoreB)
+                : scoreB.compareTo(scoreA);
+            if (comparison != 0) return comparison;
+            return (a.title ?? '').compareTo(b.title ?? '');
+          });
+        }
+        break;
     }
   }
 
-  if (separateFavorites) {
+  if (separateFavorites && mode != SortMode.smart && mode != SortMode.smartDesc) {
     final favs = sorted.where((v) => v.isFavorite).toList();
     final nonFavs = sorted.where((v) => !v.isFavorite).toList();
 
@@ -781,4 +1052,142 @@ List<Video> sortVideos(List<Video> videos, SortMode mode,
 
   applySort(sorted);
   return sorted;
+}
+
+class _PaginationBar extends StatefulWidget {
+  final int currentPage;
+  final int totalPages;
+  final Function(int) onPageChanged;
+
+  const _PaginationBar({
+    required this.currentPage,
+    required this.totalPages,
+    required this.onPageChanged,
+  });
+
+  @override
+  State<_PaginationBar> createState() => _PaginationBarState();
+}
+
+class _PaginationBarState extends State<_PaginationBar> {
+  late TextEditingController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = TextEditingController(text: '${widget.currentPage}');
+  }
+
+  @override
+  void didUpdateWidget(_PaginationBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentPage != widget.currentPage) {
+      _pageController.text = '${widget.currentPage}';
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 32,
+            height: 32,
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              iconSize: 20,
+              icon: const Icon(Icons.chevron_left),
+              onPressed: widget.currentPage > 1
+                  ? () => widget.onPageChanged(widget.currentPage - 1)
+                  : null,
+              color: widget.currentPage > 1 ? AppTheme.primaryColor : AppTheme.textSecondary.withValues(alpha: 0.3),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            '${widget.currentPage} / ${widget.totalPages}',
+            style: const TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 32,
+            height: 32,
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              iconSize: 20,
+              icon: const Icon(Icons.chevron_right),
+              onPressed: widget.currentPage < widget.totalPages
+                  ? () => widget.onPageChanged(widget.currentPage + 1)
+                  : null,
+              color: widget.currentPage < widget.totalPages ? AppTheme.primaryColor : AppTheme.textSecondary.withValues(alpha: 0.3),
+            ),
+          ),
+          const SizedBox(width: 16),
+          SizedBox(
+            width: 50,
+            height: 28,
+            child: TextField(
+              controller: _pageController,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 12),
+              decoration: InputDecoration(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.5),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppTheme.borderColor.withValues(alpha: 0.3)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppTheme.borderColor.withValues(alpha: 0.3)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppTheme.primaryColor),
+                ),
+              ),
+              onSubmitted: (value) {
+                final page = int.tryParse(value);
+                if (page != null && page >= 1 && page <= widget.totalPages) {
+                  widget.onPageChanged(page);
+                } else {
+                  _pageController.text = '${widget.currentPage}';
+                }
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '页',
+            style: TextStyle(
+              color: AppTheme.textSecondary,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

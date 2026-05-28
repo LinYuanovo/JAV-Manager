@@ -6,7 +6,7 @@
     <img src="https://img.shields.io/badge/Dart-3.11+-0175C2?style=flat-square&logo=dart" alt="Dart">
     <img src="https://img.shields.io/badge/Platform-Windows-0078D6?style=flat-square&logo=windows" alt="Windows">
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
-    <img src="https://img.shields.io/badge/Version-1.4.1-blue?style=flat-square" alt="Version">
+    <img src="https://img.shields.io/badge/Version-1.4.3-blue?style=flat-square" alt="Version">
   </nobr>
 </p>
 
@@ -177,10 +177,11 @@ build/windows/x64/runner/Release/
 ### 📺 媒体管理
 
 - **多种视图模式**：列表 / 海报 / 海报+标题 / 海报墙
-- **灵活排序**：标题、随机、最近观看
+- **灵活排序**：标题、随机
 - **自适应网格布局**，支持固定列数
 - **手动/自动扫描**媒体库，实时更新
 - **纯净模式**：仅显示番号，海报图马赛克处理
+- **智能推荐**：从用户的**收藏影片、收藏演员、收藏分类**中提取偏好信息，匹配推荐影片
 
 <figure class="half">
   <img src="https://raw.githubusercontent.com/LinYuanovo/pic_bed/refs/heads/main/JAV-Manager/media_page.png" title="media_page"/> 

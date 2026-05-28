@@ -293,15 +293,24 @@ class MediaScannerService {
           if (!scannedSet.contains(video.filePath)) {
             final f = File(video.filePath);
             if (!await f.exists()) {
-              if (kDebugMode) {
-                debugPrint('[Scan] Removing DB entry for missing file: ${video.filePath} (watched=${video.isWatched}, watchCount=${video.watchCount})');
+              if (video.isFavorite) {
+                if (kDebugMode) {
+                  debugPrint('[Scan] Marking favorited video as deleted: ${video.filePath}');
+                }
+                await _videoRepository.updateVideo(video.copyWith(isDeleted: true));
+              } else {
+                if (kDebugMode) {
+                  debugPrint('[Scan] Removing DB entry for missing file: ${video.filePath} (watched=${video.isWatched}, watchCount=${video.watchCount})');
+                }
+                await _videoRepository.deleteVideoByPath(video.filePath);
               }
-              await _videoRepository.deleteVideoByPath(video.filePath);
             }
+          } else if (video.isDeleted) {
+            await _videoRepository.updateVideo(video.copyWith(isDeleted: false));
           }
         } catch (e, stackTrace) {
           if (kDebugMode) {
-            debugPrint('═══ ERROR Deleting Video: ${video.filePath} ═══');
+            debugPrint('═══ ERROR Processing Video: ${video.filePath} ═══');
             debugPrint('Error: $e');
             debugPrint('StackTrace: $stackTrace');
           }

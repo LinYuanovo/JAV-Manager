@@ -104,7 +104,11 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
           PopupMenuButton<SortMode>(
             tooltip: '排序方式',
             icon: const Icon(Icons.sort, color: AppTheme.textSecondary),
-            onSelected: (v) => setState(() => _sortMode = v),
+            onSelected: (v) => setState(() {
+              _sortMode = v;
+              ref.read(watchedCurrentPageProvider.notifier).state = 1;
+              ref.read(sharedPreferencesProvider).setInt('watched_current_page', 1);
+            }),
             itemBuilder: (_) => const [
               PopupMenuItem(value: SortMode.titleAsc, child: Text('标题 A-Z')),
               PopupMenuItem(value: SortMode.titleDesc, child: Text('标题 Z-A')),
@@ -116,7 +120,11 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
           PopupMenuButton<ViewMode>(
             tooltip: '视图模式',
             icon: Icon(getViewModeIcon(_viewMode), color: AppTheme.textSecondary),
-            onSelected: (v) => setState(() => _viewMode = v),
+            onSelected: (v) => setState(() {
+              _viewMode = v;
+              ref.read(watchedCurrentPageProvider.notifier).state = 1;
+              ref.read(sharedPreferencesProvider).setInt('watched_current_page', 1);
+            }),
             itemBuilder: (_) => const [
               PopupMenuItem(value: ViewMode.list, child: Text('列表')),
               PopupMenuItem(value: ViewMode.poster, child: Text('海报图')),
@@ -124,6 +132,8 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
               PopupMenuItem(value: ViewMode.posterWall, child: Text('海报墙')),
             ],
           ),
+          const SizedBox(width: 8),
+          _buildPaginationModeButton(),
           const SizedBox(width: 8),
           Expanded(
             child: GlassSearchBar(
@@ -141,6 +151,52 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
         ],
       ),
     );
+  }
+
+  Widget _buildPaginationModeButton() {
+    final paginationMode = ref.watch(watchedPaginationModeProvider);
+    final isPaginated = paginationMode == PaginationMode.paginated;
+    return IconButton(
+      icon: Icon(
+        isPaginated ? Icons.view_agenda : Icons.grid_view,
+        color: AppTheme.textSecondary,
+      ),
+      tooltip: isPaginated ? '切换为瀑布流' : '切换为分页',
+      onPressed: () {
+        final newMode = isPaginated ? PaginationMode.waterfall : PaginationMode.paginated;
+        ref.read(watchedPaginationModeProvider.notifier).state = newMode;
+        ref.read(sharedPreferencesProvider).setInt('watched_pagination_mode', newMode.index);
+        ref.read(watchedCurrentPageProvider.notifier).state = 1;
+        ref.read(sharedPreferencesProvider).setInt('watched_current_page', 1);
+      },
+    );
+  }
+
+  int _calculatePageSize(BuildContext context, ViewMode viewMode) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final headerHeight = 80.0;
+    final paginationBarHeight = 60.0;
+    final availableHeight = screenHeight - headerHeight - paginationBarHeight - 40;
+
+    switch (viewMode) {
+      case ViewMode.poster:
+        final itemHeight = 260.0;
+        final rows = (availableHeight / itemHeight).floor().clamp(1, 10);
+        final columns = 5;
+        return rows * columns;
+      case ViewMode.posterWithTitle:
+        final itemHeight = 290.0;
+        final rows = (availableHeight / itemHeight).floor().clamp(1, 10);
+        final columns = 4;
+        return rows * columns;
+      case ViewMode.posterWall:
+        final itemHeight = 350.0;
+        final rows = (availableHeight / itemHeight).floor().clamp(1, 10);
+        final columns = 2;
+        return rows * columns;
+      case ViewMode.list:
+        return 5;
+    }
   }
 
   Widget _buildCountBadge(AsyncValue<List<Video>> videosAsync) {
@@ -180,6 +236,9 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
   }
 
   Widget _buildVideosGrid(List<Video> videos) {
+    final paginationMode = ref.watch(watchedPaginationModeProvider);
+    final currentPage = ref.watch(watchedCurrentPageProvider);
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: VideoGrid(
@@ -189,6 +248,12 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
         onVideoDoubleTap: (video) => _playVideo(video),
         onVideoSecondaryTap: (video, offset) => _showContextMenu(video, offset),
         onFavoriteToggle: (video) => _toggleFavorite(video),
+        paginationMode: paginationMode,
+        currentPage: currentPage,
+        onPageChanged: (page) {
+          ref.read(watchedCurrentPageProvider.notifier).state = page;
+          ref.read(sharedPreferencesProvider).setInt('watched_current_page', page);
+        },
       ),
     );
   }

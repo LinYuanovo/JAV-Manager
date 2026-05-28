@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/models/models.dart';
+import '../../../core/services/smart_sort_service.dart';
 import '../../../core/utils/app_settings.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/video_grid.dart';
@@ -48,6 +49,9 @@ class _MediaPageState extends ConsumerState<MediaPage> {
     final sortMode = ref.watch(sortModeProvider);
     final prefs = ref.watch(sharedPreferencesProvider);
     final watchedPath = prefs.getString('watched_path') ?? '';
+    final smartWeightsAsync = (sortMode == SortMode.smart || sortMode == SortMode.smartDesc)
+        ? ref.watch(smartSortWeightsProvider)
+        : null;
 
     return Column(
       children: [
@@ -58,7 +62,10 @@ class _MediaPageState extends ConsumerState<MediaPage> {
               final filteredVideos = watchedPath.isNotEmpty
                   ? videos.where((v) => !v.folderPath.contains(watchedPath)).toList()
                   : videos;
-              final sortedVideos = sortVideos(filteredVideos, sortMode, randomKey: _randomKey, separateFavorites: true);
+              final SmartSortWeights? smartWeights = smartWeightsAsync?.whenOrNull(data: (w) => w);
+              final sortedVideos = sortVideos(filteredVideos, sortMode, randomKey: _randomKey, separateFavorites: true, smartWeights: smartWeights);
+              final paginationMode = ref.watch(mediaPaginationModeProvider);
+              final currentPage = ref.watch(mediaCurrentPageProvider);
               return VideoGrid(
                 videos: sortedVideos,
                 viewMode: viewMode,
@@ -68,6 +75,12 @@ class _MediaPageState extends ConsumerState<MediaPage> {
                 onVideoDoubleTap: (video) => _playVideo(video),
                 onVideoSecondaryTap: (video, offset) => _showContextMenu(video, offset),
                 onFavoriteToggle: (video) => _toggleFavorite(video),
+                paginationMode: paginationMode,
+                currentPage: currentPage,
+                onPageChanged: (page) {
+                  ref.read(mediaCurrentPageProvider.notifier).state = page;
+                  ref.read(sharedPreferencesProvider).setInt('media_current_page', page);
+                },
               );
             },
             loading: () => Center(
@@ -135,6 +148,8 @@ class _MediaPageState extends ConsumerState<MediaPage> {
           const SizedBox(width: GlassConstants.spacingSmall),
           _buildViewModeButton(viewMode),
           const SizedBox(width: GlassConstants.spacingSmall),
+          _buildPaginationModeButton(),
+          const SizedBox(width: GlassConstants.spacingSmall),
           _buildColumnCountControl(),
           const SizedBox(width: GlassConstants.spacingSmall),
           _buildRefreshButton(),
@@ -150,12 +165,16 @@ class _MediaPageState extends ConsumerState<MediaPage> {
       onSelected: (value) {
         ref.read(sortModeProvider.notifier).state = value;
         ref.read(sharedPreferencesProvider).setInt('sort_mode', value.index);
+        if (value == SortMode.smart || value == SortMode.smartDesc) {
+          ref.invalidate(smartSortWeightsProvider);
+        }
       },
       itemBuilder: (context) => const [
+        PopupMenuItem(value: SortMode.smart, child: Text('智能推荐')),
+        PopupMenuItem(value: SortMode.smartDesc, child: Text('智能推荐（倒序）')),
+        PopupMenuDivider(),
         PopupMenuItem(value: SortMode.titleAsc, child: Text('标题 A-Z')),
         PopupMenuItem(value: SortMode.titleDesc, child: Text('标题 Z-A')),
-        PopupMenuItem(value: SortMode.recentlyWatchedDesc, child: Text('最近观看（新→旧）')),
-        PopupMenuItem(value: SortMode.recentlyWatchedAsc, child: Text('最近观看（旧→新）')),
       ],
     );
   }
@@ -167,6 +186,8 @@ class _MediaPageState extends ConsumerState<MediaPage> {
       onSelected: (value) {
         ref.read(viewModeProvider.notifier).state = value;
         ref.read(sharedPreferencesProvider).setInt('view_mode', value.index);
+        ref.read(mediaCurrentPageProvider.notifier).state = 1;
+        ref.read(sharedPreferencesProvider).setInt('media_current_page', 1);
       },
       itemBuilder: (context) => const [
         PopupMenuItem(value: ViewMode.list, child: Text('列表')),
@@ -174,6 +195,25 @@ class _MediaPageState extends ConsumerState<MediaPage> {
         PopupMenuItem(value: ViewMode.posterWithTitle, child: Text('带标题海报图')),
         PopupMenuItem(value: ViewMode.posterWall, child: Text('海报墙')),
       ],
+    );
+  }
+
+  Widget _buildPaginationModeButton() {
+    final paginationMode = ref.watch(mediaPaginationModeProvider);
+    final isPaginated = paginationMode == PaginationMode.paginated;
+    return IconButton(
+      icon: Icon(
+        isPaginated ? Icons.view_agenda : Icons.grid_view,
+        color: AppTheme.textSecondary,
+      ),
+      tooltip: isPaginated ? '切换为瀑布流' : '切换为分页',
+      onPressed: () {
+        final newMode = isPaginated ? PaginationMode.waterfall : PaginationMode.paginated;
+        ref.read(mediaPaginationModeProvider.notifier).state = newMode;
+        ref.read(sharedPreferencesProvider).setInt('media_pagination_mode', newMode.index);
+        ref.read(mediaCurrentPageProvider.notifier).state = 1;
+        ref.read(sharedPreferencesProvider).setInt('media_current_page', 1);
+      },
     );
   }
 

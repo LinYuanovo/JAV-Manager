@@ -94,7 +94,15 @@ class _ActorsPageState extends ConsumerState<ActorsPage> {
                 );
               }
 
-              return _buildActorsGrid(filteredActors, fontSize);
+              final paginationMode = ref.watch(actorsPaginationModeProvider);
+              final currentPage = ref.watch(actorsCurrentPageProvider);
+              final pageSize = paginationMode == PaginationMode.paginated
+                  ? _calculatePageSize(context)
+                  : null;
+
+              return _buildActorsGrid(
+                filteredActors, fontSize, paginationMode, currentPage, pageSize,
+              );
             },
             loading: () => const Center(
               child: CircularProgressIndicator(
@@ -148,6 +156,8 @@ class _ActorsPageState extends ConsumerState<ActorsPage> {
           _buildSortOptions(),
           const SizedBox(width: 12),
           _buildColumnCountControl(),
+          const SizedBox(width: 12),
+          _buildPaginationModeButton(),
           const SizedBox(width: 12),
           (_isFetchingAvatars)
               ? Row(
@@ -302,33 +312,100 @@ class _ActorsPageState extends ConsumerState<ActorsPage> {
     );
   }
 
-  Widget _buildActorsGrid(List<Actor> actors, double fontSize) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final crossAxisCount = _calculateCrossAxisCount(
-          constraints.maxWidth,
-        );
-
-        return GridView.builder(
-          padding: const EdgeInsets.all(16),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            childAspectRatio: 0.75,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-          ),
-          itemCount: actors.length,
-          itemBuilder: (context, index) {
-            return _ActorCard(
-              actor: actors[index],
-              onTap: () => _showActorDetail(actors[index]),
-              onFavoriteToggle: () => _toggleFavorite(actors[index]),
-              fontSize: fontSize * 0.93,
-            );
-          },
-        );
+  Widget _buildPaginationModeButton() {
+    final paginationMode = ref.watch(actorsPaginationModeProvider);
+    final isPaginated = paginationMode == PaginationMode.paginated;
+    return IconButton(
+      icon: Icon(
+        isPaginated ? Icons.view_agenda : Icons.grid_view,
+        color: AppTheme.textSecondary,
+      ),
+      tooltip: isPaginated ? '切换为瀑布流' : '切换为分页',
+      onPressed: () {
+        final newMode = isPaginated ? PaginationMode.waterfall : PaginationMode.paginated;
+        ref.read(actorsPaginationModeProvider.notifier).state = newMode;
+        ref.read(sharedPreferencesProvider).setInt('actors_pagination_mode', newMode.index);
+        ref.read(actorsCurrentPageProvider.notifier).state = 1;
+        ref.read(sharedPreferencesProvider).setInt('actors_current_page', 1);
       },
     );
+  }
+
+  int _calculatePageSize(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final headerHeight = 80.0;
+    final paginationBarHeight = 60.0;
+    final availableHeight = screenHeight - headerHeight - paginationBarHeight - 40;
+    final itemHeight = 200.0;
+    final rows = (availableHeight / itemHeight).floor().clamp(1, 10);
+    final isFixed = ref.read(isActorFixedColumnCountProvider);
+    final columns = isFixed
+        ? ref.read(actorFixedColumnCountProvider).clamp(2, 10)
+        : 5;
+    return (rows * columns).clamp(1, 100);
+  }
+
+  Widget _buildActorsGrid(
+    List<Actor> actors,
+    double fontSize,
+    PaginationMode paginationMode,
+    int currentPage,
+    int? pageSize,
+  ) {
+    final displayActors = paginationMode == PaginationMode.paginated && pageSize != null
+        ? _getPaginatedActors(actors, currentPage, pageSize)
+        : actors;
+    final totalPages = pageSize != null && pageSize > 0
+        ? (actors.length / pageSize).ceil().clamp(1, 9999)
+        : 1;
+
+    return Column(
+      children: [
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final crossAxisCount = _calculateCrossAxisCount(
+                constraints.maxWidth,
+              );
+
+              return GridView.builder(
+                padding: const EdgeInsets.all(16),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  childAspectRatio: 0.75,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                ),
+                itemCount: displayActors.length,
+                itemBuilder: (context, index) {
+                  return _ActorCard(
+                    actor: displayActors[index],
+                    onTap: () => _showActorDetail(displayActors[index]),
+                    onFavoriteToggle: () => _toggleFavorite(displayActors[index]),
+                    fontSize: fontSize * 0.93,
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        if (paginationMode == PaginationMode.paginated && totalPages > 1)
+          _ActorPaginationBar(
+            currentPage: currentPage,
+            totalPages: totalPages,
+            onPageChanged: (page) {
+              ref.read(actorsCurrentPageProvider.notifier).state = page;
+              ref.read(sharedPreferencesProvider).setInt('actors_current_page', page);
+            },
+          ),
+      ],
+    );
+  }
+
+  List<Actor> _getPaginatedActors(List<Actor> actors, int currentPage, int pageSize) {
+    final start = (currentPage - 1) * pageSize;
+    final end = start + pageSize;
+    return actors.sublist(start.clamp(0, actors.length), end.clamp(0, actors.length));
   }
 
   int _calculateCrossAxisCount(double width) {
@@ -654,6 +731,130 @@ class _ActorCardState extends State<_ActorCard>
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ActorPaginationBar extends StatefulWidget {
+  final int currentPage;
+  final int totalPages;
+  final Function(int) onPageChanged;
+
+  const _ActorPaginationBar({
+    required this.currentPage,
+    required this.totalPages,
+    required this.onPageChanged,
+  });
+
+  @override
+  State<_ActorPaginationBar> createState() => _ActorPaginationBarState();
+}
+
+class _ActorPaginationBarState extends State<_ActorPaginationBar> {
+  late TextEditingController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = TextEditingController(text: '${widget.currentPage}');
+  }
+
+  @override
+  void didUpdateWidget(_ActorPaginationBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentPage != widget.currentPage) {
+      _pageController.text = '${widget.currentPage}';
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassContainer(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left),
+            onPressed: widget.currentPage > 1
+                ? () => widget.onPageChanged(widget.currentPage - 1)
+                : null,
+            color: widget.currentPage > 1
+                ? AppTheme.primaryColor
+                : AppTheme.textSecondary.withValues(alpha: 0.3),
+          ),
+          const SizedBox(width: 16),
+          Text(
+            '${widget.currentPage} / ${widget.totalPages}',
+            style: const TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(width: 16),
+          IconButton(
+            icon: const Icon(Icons.chevron_right),
+            onPressed: widget.currentPage < widget.totalPages
+                ? () => widget.onPageChanged(widget.currentPage + 1)
+                : null,
+            color: widget.currentPage < widget.totalPages
+                ? AppTheme.primaryColor
+                : AppTheme.textSecondary.withValues(alpha: 0.3),
+          ),
+          const SizedBox(width: 24),
+          SizedBox(
+            width: 60,
+            height: 36,
+            child: TextField(
+              controller: _pageController,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              decoration: InputDecoration(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.5),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.3)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppTheme.textSecondary.withValues(alpha: 0.3)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppTheme.primaryColor),
+                ),
+              ),
+              onSubmitted: (value) {
+                final page = int.tryParse(value);
+                if (page != null && page >= 1 && page <= widget.totalPages) {
+                  widget.onPageChanged(page);
+                } else {
+                  _pageController.text = '${widget.currentPage}';
+                }
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '页',
+            style: TextStyle(
+              color: AppTheme.textSecondary,
+              fontSize: 13,
+            ),
+          ),
+        ],
       ),
     );
   }

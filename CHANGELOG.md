@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.3] - 2026-05-28
+
+### Added
+- 智能排序功能：基于收藏影片的演员、标签、片商频次计算权重进行推荐排序
+- 分页模式：支持瀑布流/分页切换，各页面独立设置并持久化
+- 已删除影片保护：收藏的影片文件被删除后保留数据库记录，渲染时显示白底黄字提示
+- 分页控制条：上一页/下一页、页码显示、输入跳转
+
+### Changed
+- 媒体页面排序菜单移除"最近观看"选项，新增"智能推荐"和"智能推荐（倒序）"
+- 数据库版本升级至 v4，新增 is_deleted 字段
+- 分页条高度优化，更加紧凑
+- 设置文件读写改用显式 UTF-8 编码，修复中文乱码问题
+
+### Fixed
+- 修复设置文件保存时 PathAccessException（文件锁定时回退直接写入）
+- 修复分页模式下网格项未填满视口的问题
+- 修复纯净模式下已删除影片不显示标题的问题
+- 修复智能排序顺序/倒序逻辑反转的问题
+- 修复设置页面 ref disposed 报错
+- 版本号统一更新至 1.4.3
+
 ## [1.4.2] - 2026-05-23
 
 ### Fixed

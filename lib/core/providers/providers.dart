@@ -13,6 +13,7 @@ import '../services/webdav_service.dart';
 import '../services/scraper_service.dart';
 import '../services/media_count_service.dart';
 import '../services/task_event_listener.dart';
+import '../services/smart_sort_service.dart';
 import '../models/models.dart';
 import '../models/scraper_models.dart';
 
@@ -515,4 +516,89 @@ final scrapableMoviesProvider = StateProvider<List<ScrapableMovie>>((ref) {
 final scrapeStatsProvider = Provider<ScrapeStats>((ref) {
   final movies = ref.watch(scrapableMoviesProvider);
   return ScrapeStats.fromList(movies);
+});
+
+// ===== 智能排序相关 Providers =====
+
+/// 智能排序服务 Provider
+final smartSortServiceProvider = Provider<SmartSortService>((ref) {
+  final service = SmartSortService(
+    videoRepository: ref.watch(videoRepositoryProvider),
+    actorRepository: ref.watch(actorRepositoryProvider),
+    categoryRepository: ref.watch(categoryRepositoryProvider),
+  );
+  return service;
+});
+
+/// 智能排序权重缓存 Provider
+final smartSortWeightsProvider = FutureProvider<SmartSortWeights>((ref) async {
+  final service = ref.watch(smartSortServiceProvider);
+  return await service.getWeights();
+});
+
+// ===== 分页相关 Providers =====
+
+/// 媒体页面分页模式
+final mediaPaginationModeProvider = StateProvider<PaginationMode>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  final index = prefs.getInt('media_pagination_mode') ?? 0;
+  return PaginationMode.values[index.clamp(0, PaginationMode.values.length - 1)];
+});
+
+/// 已看页面分页模式
+final watchedPaginationModeProvider = StateProvider<PaginationMode>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  final index = prefs.getInt('watched_pagination_mode') ?? 0;
+  return PaginationMode.values[index.clamp(0, PaginationMode.values.length - 1)];
+});
+
+/// 收藏页面分页模式
+final favoritesPaginationModeProvider = StateProvider<PaginationMode>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  final index = prefs.getInt('favorites_pagination_mode') ?? 0;
+  return PaginationMode.values[index.clamp(0, PaginationMode.values.length - 1)];
+});
+
+/// 演员页面分页模式
+final actorsPaginationModeProvider = StateProvider<PaginationMode>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  final index = prefs.getInt('actors_pagination_mode') ?? 0;
+  return PaginationMode.values[index.clamp(0, PaginationMode.values.length - 1)];
+});
+
+/// 分类页面分页模式
+final categoriesPaginationModeProvider = StateProvider<PaginationMode>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  final index = prefs.getInt('categories_pagination_mode') ?? 0;
+  return PaginationMode.values[index.clamp(0, PaginationMode.values.length - 1)];
+});
+
+/// 媒体页面当前页码
+final mediaCurrentPageProvider = StateProvider<int>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return prefs.getInt('media_current_page') ?? 1;
+});
+
+/// 已看页面当前页码
+final watchedCurrentPageProvider = StateProvider<int>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return prefs.getInt('watched_current_page') ?? 1;
+});
+
+/// 收藏页面当前页码
+final favoritesCurrentPageProvider = StateProvider<int>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return prefs.getInt('favorites_current_page') ?? 1;
+});
+
+/// 演员页面当前页码
+final actorsCurrentPageProvider = StateProvider<int>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return prefs.getInt('actors_current_page') ?? 1;
+});
+
+/// 分类页面当前页码
+final categoriesCurrentPageProvider = StateProvider<int>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return prefs.getInt('categories_current_page') ?? 1;
 });

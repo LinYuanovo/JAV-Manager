@@ -17,11 +17,17 @@ void main() async {
   // 初始化日志系统
   await AppLogger.instance.init();
 
+  final log = AppLogger.instance;
+  log.info('App', 'Application starting...');
+
   _setupErrorHandling();
 
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    log.info('App', 'Initializing sqflite_ffi...');
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+
+    log.info('App', 'Initializing window manager...');
     await windowManager.ensureInitialized();
     await windowManager.setPreventClose(true);
 
@@ -38,10 +44,14 @@ void main() async {
       await windowManager.show();
       await windowManager.focus();
     });
+    log.info('App', 'Window manager initialized');
   }
 
+  log.info('App', 'Loading settings...');
   final prefs = await AppSettings.load();
+  log.info('App', 'Settings loaded successfully');
 
+  log.info('App', 'Starting app...');
   runApp(
     ProviderScope(
       overrides: [

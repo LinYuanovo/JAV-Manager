@@ -1,10 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../utils/app_paths.dart';
 
 class DatabaseHelper {
   static Database? _database;
   static Future<Database>? _databaseFuture;
-  static const int _databaseVersion = 3;
+  static const int _databaseVersion = 4;
 
   /// Returns the root data directory where all app data is stored.
   static Future<String> getDataDir() => AppPaths.rootDir;
@@ -19,6 +20,11 @@ class DatabaseHelper {
   static Future<Database> _initDatabase() async {
     final dbPath = await getDatabasePath();
 
+    if (kDebugMode) {
+      debugPrint('[DB] Initializing database at: $dbPath');
+      debugPrint('[DB] Target version: $_databaseVersion');
+    }
+
     final db = await openDatabase(
       dbPath,
       version: _databaseVersion,
@@ -26,8 +32,15 @@ class DatabaseHelper {
       onUpgrade: _onUpgrade,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
+        if (kDebugMode) {
+          debugPrint('[DB] Database configured with foreign_keys ON');
+        }
       },
     );
+
+    if (kDebugMode) {
+      debugPrint('[DB] Database opened successfully, version: ${await db.getVersion()}');
+    }
 
     // 安全检查：确保 ignored_codes 表存在（防止升级中断导致表缺失）
     await _ensureTableExists(db, 'ignored_codes', '''
@@ -40,6 +53,9 @@ class DatabaseHelper {
       )
     ''', indexSql: 'CREATE INDEX IF NOT EXISTS idx_ignored_codes_code ON ignored_codes(code)');
 
+    // 安全检查：确保 videos 表有 is_deleted 列
+    await _ensureColumnExists(db, 'videos', 'is_deleted', 'INTEGER DEFAULT 0');
+
     _database = db;
     return db;
   }
@@ -47,8 +63,28 @@ class DatabaseHelper {
   static Future<void> _ensureTableExists(Database db, String tableName, String createSql, {String? indexSql}) async {
     final result = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name=?", [tableName]);
     if (result.isEmpty) {
+      if (kDebugMode) {
+        debugPrint('[DB] Creating missing table: $tableName');
+      }
       await db.execute(createSql);
       if (indexSql != null) await db.execute(indexSql);
+    }
+  }
+
+  static Future<void> _ensureColumnExists(Database db, String tableName, String columnName, String columnDef) async {
+    try {
+      final result = await db.rawQuery("PRAGMA table_info($tableName)");
+      final columns = result.map((r) => r['name'] as String).toList();
+      if (!columns.contains(columnName)) {
+        if (kDebugMode) {
+          debugPrint('[DB] Adding missing column $columnName to $tableName');
+        }
+        await db.execute('ALTER TABLE $tableName ADD COLUMN $columnName $columnDef');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[DB] Error checking/adding column $columnName to $tableName: $e');
+      }
     }
   }
 
@@ -67,6 +103,7 @@ class DatabaseHelper {
         last_watched_time DATETIME,
         is_favorite INTEGER DEFAULT 0,
         is_watched INTEGER DEFAULT 0,
+        is_deleted INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
@@ -137,10 +174,20 @@ class DatabaseHelper {
   }
 
   static Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (kDebugMode) {
+      debugPrint('[DB] Upgrading database from version $oldVersion to $newVersion');
+    }
+
     if (oldVersion < 2) {
+      if (kDebugMode) {
+        debugPrint('[DB] Applying upgrade v1->v2: adding plot column');
+      }
       await db.execute('ALTER TABLE videos ADD COLUMN plot TEXT');
     }
     if (oldVersion < 3) {
+      if (kDebugMode) {
+        debugPrint('[DB] Applying upgrade v2->v3: creating ignored_codes table');
+      }
       await db.execute('''
         CREATE TABLE ignored_codes (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -153,6 +200,16 @@ class DatabaseHelper {
       await db.execute('''
         CREATE INDEX idx_ignored_codes_code ON ignored_codes(code)
       ''');
+    }
+    if (oldVersion < 4) {
+      if (kDebugMode) {
+        debugPrint('[DB] Applying upgrade v3->v4: adding is_deleted column');
+      }
+      await db.execute('ALTER TABLE videos ADD COLUMN is_deleted INTEGER DEFAULT 0');
+    }
+
+    if (kDebugMode) {
+      debugPrint('[DB] Database upgrade completed');
     }
   }
 
