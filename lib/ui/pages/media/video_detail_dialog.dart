@@ -93,6 +93,76 @@ class _VideoDetailDialogState extends ConsumerState<VideoDetailDialog>
     final pureMode = ref.watch(pureModeProvider);
 
     if (widget.video.isDeleted) {
+      final hasBackupFanart = widget.video.fanartPath != null;
+      final hasBackupPoster = widget.video.posterPath != null;
+
+      if (hasBackupFanart || hasBackupPoster) {
+        return SizedBox(
+          width: leftWidth,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (hasBackupFanart)
+                Image.file(File(widget.video.fanartPath!), fit: BoxFit.cover, cacheWidth: 1200, gaplessPlayback: true, errorBuilder: AppTheme.imageErrorBuilder)
+              else if (hasBackupPoster)
+                Image.file(File(widget.video.posterPath!), fit: BoxFit.cover, cacheWidth: 600, gaplessPlayback: true, errorBuilder: AppTheme.imageErrorBuilder),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha:0.1),
+                      Colors.black.withValues(alpha:0.4),
+                    ],
+                    stops: const [0.0, 0.6, 1.0],
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 16,
+                left: 16,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.cloud_done, size: 16, color: AppTheme.primaryColor),
+                      SizedBox(width: 6),
+                      Text('备份影片', style: TextStyle(color: AppTheme.primaryColor, fontSize: 13, fontWeight: FontWeight.w500)),
+                    ],
+                  ),
+                ),
+              ),
+              if (hasBackupPoster)
+                Positioned(
+                  bottom: 32,
+                  left: 32,
+                  child: Container(
+                    width: 140,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(GlassConstants.radiusSmall),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withValues(alpha:0.5), blurRadius: 20, offset: const Offset(0, 10)),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(GlassConstants.radiusSmall),
+                      child: Image.file(File(widget.video.posterPath!), fit: BoxFit.cover, cacheWidth: 280, gaplessPlayback: true, errorBuilder: AppTheme.imageErrorBuilder),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      }
+
       return SizedBox(
         width: leftWidth,
         child: Container(

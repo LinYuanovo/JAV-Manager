@@ -180,12 +180,18 @@ class VideoRepository {
 
   Future<List<Video>> searchVideos(String query) async {
     final db = await _db;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'videos',
-      where: 'title LIKE ?',
-      whereArgs: ['%$query%'],
-      orderBy: 'title ASC',
-    );
+    final List<Map<String, dynamic>> maps = await db.rawQuery('''
+      SELECT DISTINCT v.* FROM videos v
+      LEFT JOIN video_actors va ON v.id = va.video_id
+      LEFT JOIN actors a ON va.actor_id = a.id
+      LEFT JOIN video_categories vc ON v.id = vc.video_id
+      LEFT JOIN categories c ON vc.category_id = c.id
+      WHERE v.title LIKE ? 
+         OR v.plot LIKE ?
+         OR a.name LIKE ?
+         OR c.name LIKE ?
+      ORDER BY v.title ASC
+    ''', ['%$query%', '%$query%', '%$query%', '%$query%']);
     final videos = maps.map((map) => Video.fromMap(map)).toList();
     return _fillVideoRelations(videos);
   }

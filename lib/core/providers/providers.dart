@@ -89,7 +89,7 @@ final allVideosProvider = FutureProvider<List<Video>>((ref) async {
   try {
     final repository = ref.watch(videoRepositoryProvider);
     final allVideos = await repository.getAllVideos();
-    final result = allVideos.where((v) => !v.isWatched).toList();
+    final result = allVideos.where((v) => !v.isWatched && !v.isDeleted).toList();
     if (kDebugMode) {
       debugPrint('✅ Loaded ${result.length} videos (filtered watched)');
     }
@@ -601,4 +601,14 @@ final actorsCurrentPageProvider = StateProvider<int>((ref) {
 final categoriesCurrentPageProvider = StateProvider<int>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   return prefs.getInt('categories_current_page') ?? 1;
+});
+
+final mediaSearchQueryProvider = StateProvider<String>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return prefs.getString('media_search_query') ?? '';
+});
+
+final favoritesSearchQueryProvider = StateProvider<String>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return prefs.getString('favorites_search_query') ?? '';
 });

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/providers.dart';
@@ -38,6 +39,11 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
         prefs.setInt('favorites_last_tab', _tabController.index);
       }
     });
+    final savedQuery = ref.read(favoritesSearchQueryProvider);
+    if (savedQuery.isNotEmpty) {
+      _searchQuery = savedQuery;
+      _searchController.text = savedQuery;
+    }
   }
 
   @override
@@ -89,7 +95,10 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage>
             child: GlassSearchBar(
               controller: _searchController,
               hintText: '搜索收藏...',
-              onChanged: (value) => setState(() => _searchQuery = value),
+              onChanged: (value) {
+                setState(() => _searchQuery = value);
+                ref.read(sharedPreferencesProvider).setString('favorites_search_query', value);
+              },
             ),
           ),
         ],
@@ -201,6 +210,8 @@ class _FavoriteVideosTabState extends ConsumerState<_FavoriteVideosTab>
                 isFixedColumnCount: ref.watch(favoriteIsFixedColumnCountProvider),
                 fixedColumnCount: ref.watch(favoriteFixedColumnCountProvider),
                 onVideoTap: (video) => _showVideoDetail(context, video),
+                onVideoDoubleTap: (video) => _playVideo(video),
+                onVideoSecondaryTap: (video, offset) => _showContextMenu(context, ref, video, offset),
                 onFavoriteToggle: (video) => _toggleFavorite(ref, video),
                 paginationMode: paginationMode,
                 currentPage: currentPage,
@@ -330,7 +341,21 @@ class _FavoriteVideosTabState extends ConsumerState<_FavoriteVideosTab>
   Future<void> _toggleFavorite(WidgetRef ref, Video video) async {
     try {
       final repository = ref.read(videoRepositoryProvider);
-      await repository.toggleFavorite(video.id!, !video.isFavorite);
+      final wasFavorite = video.isFavorite;
+      await repository.toggleFavorite(video.id!, !wasFavorite);
+      final prefs = ref.read(sharedPreferencesProvider);
+      final libraryPath = prefs.getString('library_path') ?? '';
+      if (libraryPath.isNotEmpty) {
+        final scanner = ref.read(mediaScannerServiceProvider);
+        if (!wasFavorite) {
+          await scanner.backupFavoriteFiles(video, libraryPath);
+        } else {
+          await scanner.deleteBackupFiles(video, libraryPath);
+          if (video.isDeleted) {
+            await repository.deleteVideo(video.id!);
+          }
+        }
+      }
       ref.invalidate(favoriteVideosProvider);
       ref.invalidate(allVideosProvider);
     } catch (e) {
@@ -338,6 +363,87 @@ class _FavoriteVideosTabState extends ConsumerState<_FavoriteVideosTab>
         showCopyToast(context, '操作失败: $e');
       }
     }
+  }
+
+  void _showContextMenu(BuildContext context, WidgetRef ref, Video video, Offset position) {
+    AppTheme.showGlassMenu(
+      context: context,
+      position: RelativeRect.fromLTRB(position.dx, position.dy, position.dx + 1, position.dy + 1),
+      items: <PopupMenuEntry<String>>[
+        const PopupMenuItem(value: 'play', child: ListTile(leading: Icon(Icons.play_arrow), title: Text('播放'), dense: true)),
+        PopupMenuItem(
+          value: 'favorite',
+          child: ListTile(
+            leading: Icon(video.isFavorite ? Icons.favorite : Icons.favorite_border),
+            title: Text(video.isFavorite ? '取消收藏' : '收藏'),
+            dense: true,
+          ),
+        ),
+        const PopupMenuItem(value: 'folder', child: ListTile(leading: Icon(Icons.folder_open), title: Text('打开文件夹'), dense: true)),
+        if (video.actors.isNotEmpty)
+          const PopupMenuItem(value: 'actors', child: ListTile(leading: Icon(Icons.person), title: Text('查看演员'), dense: true)),
+      ],
+    ).then((value) async {
+      if (value == null) return;
+      final repository = ref.read(videoRepositoryProvider);
+      switch (value) {
+        case 'play':
+          await _playVideo(video);
+          break;
+        case 'favorite':
+          final wasFav = video.isFavorite;
+          await repository.toggleFavorite(video.id!, !wasFav);
+          final favPrefs = ref.read(sharedPreferencesProvider);
+          final libPath = favPrefs.getString('library_path') ?? '';
+          if (libPath.isNotEmpty) {
+            final scanSvc = ref.read(mediaScannerServiceProvider);
+            if (!wasFav) {
+              await scanSvc.backupFavoriteFiles(video, libPath);
+            } else {
+              await scanSvc.deleteBackupFiles(video, libPath);
+              if (video.isDeleted) {
+                await repository.deleteVideo(video.id!);
+              }
+            }
+          }
+          ref.invalidate(favoriteVideosProvider);
+          ref.invalidate(allVideosProvider);
+          break;
+        case 'folder':
+          await Process.start('explorer', [video.folderPath], runInShell: true);
+          break;
+        case 'actors':
+          if (video.actors.isNotEmpty && mounted) {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => ActorDetailPage(actor: video.actors.first)),
+            );
+          }
+          break;
+      }
+    });
+  }
+
+  Future<void> _playVideo(Video video) async {
+    final repository = ref.read(videoRepositoryProvider);
+    await repository.incrementWatchCount(video.id!);
+
+    final prefs = ref.read(sharedPreferencesProvider);
+    final playerPath = prefs.getString('player_path');
+
+    try {
+      if (playerPath != null && playerPath.isNotEmpty) {
+        await Process.run('cmd', ['/c', 'start', '""', playerPath, video.filePath], runInShell: true);
+      } else {
+        await Process.run('cmd', ['/c', 'start', '""', video.filePath], runInShell: true);
+      }
+    } catch (e) {
+      if (mounted) {
+        showCopyToast(context, '播放失败: $e');
+      }
+    }
+
+    ref.invalidate(favoriteVideosProvider);
+    ref.invalidate(allVideosProvider);
   }
 }
 

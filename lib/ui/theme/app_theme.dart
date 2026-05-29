@@ -604,7 +604,7 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
 }
 
 // ===== 搜索栏 =====
-class GlassSearchBar extends StatelessWidget {
+class GlassSearchBar extends StatefulWidget {
   final TextEditingController? controller;
   final String? hintText;
   final ValueChanged<String>? onChanged;
@@ -619,9 +619,52 @@ class GlassSearchBar extends StatelessWidget {
   });
 
   @override
+  State<GlassSearchBar> createState() => _GlassSearchBarState();
+}
+
+class _GlassSearchBarState extends State<GlassSearchBar> {
+  late TextEditingController _controller;
+  bool _hasText = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = widget.controller ?? TextEditingController();
+    _hasText = _controller.text.isNotEmpty;
+    _controller.addListener(_onTextChanged);
+  }
+
+  @override
+  void didUpdateWidget(GlassSearchBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.controller != null && widget.controller != _controller) {
+      _controller.removeListener(_onTextChanged);
+      _controller = widget.controller!;
+      _hasText = _controller.text.isNotEmpty;
+      _controller.addListener(_onTextChanged);
+    }
+  }
+
+  void _onTextChanged() {
+    final hasText = _controller.text.isNotEmpty;
+    if (hasText != _hasText) {
+      setState(() => _hasText = hasText);
+    }
+  }
+
+  @override
+  void dispose() {
+    if (widget.controller == null) {
+      _controller.removeListener(_onTextChanged);
+      _controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return GlassContainer(
-      margin: margin ?? EdgeInsets.zero,
+      margin: widget.margin ?? EdgeInsets.zero,
       borderRadius: 24,
       blur: GlassConstants.blurSmall,
       color: Colors.white.withValues(alpha:0.5),
@@ -640,11 +683,11 @@ class GlassSearchBar extends StatelessWidget {
       child: SizedBox(
         height: 40,
         child: TextField(
-          controller: controller,
-          onChanged: onChanged,
+          controller: _controller,
+          onChanged: widget.onChanged,
           style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
           decoration: InputDecoration(
-            hintText: hintText ?? '搜索...',
+            hintText: widget.hintText ?? '搜索...',
             hintStyle: TextStyle(
               color: AppTheme.textSecondary.withValues(alpha:0.6),
               fontSize: 14,
@@ -654,6 +697,26 @@ class GlassSearchBar extends StatelessWidget {
               color: AppTheme.textSecondary.withValues(alpha:0.6),
               size: 20,
             ),
+            suffixIcon: _hasText
+                ? GestureDetector(
+                    onTap: () {
+                      _controller.clear();
+                      widget.onChanged?.call('');
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.textSecondary.withValues(alpha:0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.close,
+                        size: 16,
+                        color: AppTheme.textSecondary.withValues(alpha:0.7),
+                      ),
+                    ),
+                  )
+                : null,
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(vertical: 10),
           ),

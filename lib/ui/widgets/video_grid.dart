@@ -330,6 +330,26 @@ class _VideoCardState extends ConsumerState<_VideoCard>
                     ),
                   ),
                 ),
+              if (widget.video.isDeleted && widget.video.isFavorite)
+                Positioned(
+                  top: (widget.video.isWatched || widget.video.watchCount > 0) ? 38 : 8,
+                  left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.cloud_done, size: 14, color: AppTheme.primaryColor),
+                        SizedBox(width: 4),
+                        Text('备份', style: TextStyle(color: AppTheme.primaryColor, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ),
               Positioned(
                 top: 8,
                 right: 8,
@@ -435,6 +455,26 @@ class _VideoCardState extends ConsumerState<_VideoCard>
                       ),
                     ),
                   ),
+                if (widget.video.isDeleted && widget.video.isFavorite)
+                  Positioned(
+                    top: (widget.video.isWatched || widget.video.watchCount > 0) ? 30 : 6,
+                    left: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.cloud_done, size: 12, color: AppTheme.primaryColor),
+                          SizedBox(width: 3),
+                          Text('备份', style: TextStyle(color: AppTheme.primaryColor, fontSize: 10)),
+                        ],
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -455,7 +495,7 @@ class _VideoCardState extends ConsumerState<_VideoCard>
 
   Widget _buildPoster(bool showTitle) {
     if (widget.video.isDeleted) {
-      return _buildDeletedPlaceholder();
+      return _buildDeletedPlaceholder(preferPoster: true);
     }
     return Container(
       decoration: BoxDecoration(
@@ -494,7 +534,38 @@ class _VideoCardState extends ConsumerState<_VideoCard>
     );
   }
 
-  Widget _buildDeletedPlaceholder() {
+  Widget _buildDeletedPlaceholder({bool preferPoster = false}) {
+    final hasBackupPoster = widget.video.posterPath != null;
+    final hasBackupFanart = widget.video.fanartPath != null;
+
+    if (hasBackupPoster || hasBackupFanart) {
+      final primaryPath = preferPoster
+          ? (hasBackupPoster ? widget.video.posterPath! : widget.video.fanartPath!)
+          : (hasBackupFanart ? widget.video.fanartPath! : widget.video.posterPath!);
+
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(GlassConstants.radiusLarge),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.file(
+              File(primaryPath),
+              fit: BoxFit.cover,
+              cacheWidth: 400,
+              gaplessPlayback: true,
+              errorBuilder: AppTheme.imageErrorBuilder,
+            ),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(GlassConstants.radiusLarge),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -896,58 +967,101 @@ class _VideoListItem extends ConsumerWidget {
   }
 
   Widget _buildDeletedListItem() {
+    final hasBackupPoster = video.posterPath != null;
+    final hasBackupFanart = video.fanartPath != null;
+
     return GlassContainer(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       child: Row(
         children: [
-          Container(
-            width: 360,
-            height: 202,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '该影片已被删除',
-                      style: TextStyle(
-                        color: AppTheme.warningColor,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: SizedBox(
+              width: 360,
+              height: 202,
+              child: (hasBackupPoster || hasBackupFanart)
+                  ? Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (hasBackupFanart)
+                          Image.file(
+                            File(video.fanartPath!),
+                            fit: BoxFit.cover,
+                            errorBuilder: AppTheme.imageErrorBuilder,
+                          )
+                        else if (hasBackupPoster)
+                          Image.file(
+                            File(video.posterPath!),
+                            fit: BoxFit.cover,
+                            errorBuilder: AppTheme.imageErrorBuilder,
+                          ),
+                        Container(
+                          color: Colors.black.withValues(alpha: 0.12),
+                        ),
+                      ],
+                    )
+                  : Container(
+                      color: Colors.white,
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '该影片已被删除',
+                                style: TextStyle(
+                                  color: AppTheme.warningColor,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '只能展示部分信息',
+                                style: TextStyle(
+                                  color: AppTheme.warningColor.withValues(alpha: 0.8),
+                                  fontSize: 12,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '只能展示部分信息',
-                      style: TextStyle(
-                        color: AppTheme.warningColor.withValues(alpha: 0.8),
-                        fontSize: 12,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
             ),
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: Text(
-              video.title ?? '未知标题',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: fontSize,
-                fontWeight: FontWeight.w500,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  video.title ?? '未知标题',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (video.isDeleted && video.isFavorite)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.cloud_done, size: 14, color: AppTheme.primaryColor),
+                        const SizedBox(width: 4),
+                        Text('备份', style: TextStyle(color: AppTheme.primaryColor, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+              ],
             ),
           ),
           if (video.isWatched)

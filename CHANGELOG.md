@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.4] - 2026-05-29
+
+### Added
+- 搜索词持久化：媒体页面和收藏页面的搜索词在切换页面后保留
+- 搜索框清除按钮：搜索框有内容时右侧显示圆形清除按钮
+- 搜索增强：媒体页面搜索支持匹配简介、演员名、标签、系列、片商
+- 页码记忆：搜索时自动保存当前页码，清空搜索词后恢复之前的浏览位置
+- 收藏页面右键菜单：支持播放、取消收藏、打开文件夹、查看演员
+- 收藏备份功能：收藏影片时自动复制 movie.nfo、fanart.jpg、poster.jpg 到媒体库 Backup 目录
+- 虚拟影片展示：已删除的收藏影片从 Backup 恢复元数据，在收藏页面以备份标签展示
+- 虚拟影片智能图片：有备份图片时展示图片而非提示文本
+- 虚拟影片详情页：展示备份的 fanart 背景和 poster 缩略图
+
+### Changed
+- 版本号升级至 1.4.4
+- 海报图/带标题海报图模式下已删除影片优先展示 poster 图片
+- 媒体页面 allVideosProvider 排除 isDeleted 影片，避免展示虚拟影片
+- 取消收藏时自动删除对应的 Backup 文件夹
+- 扫描入库时自动为已删除的收藏影片从 Backup 补充 poster/fanart/nfo 路径
+
+### Fixed
+- 修复设置页面添加忽略文件夹时中文路径报错（移除错误的 Uri.decodeComponent 调用）
+- 修复分页模式下搜索时页码未重置导致搜索结果为空的问题
+
 ## [1.4.3] - 2026-05-28
 
 ### Added

@@ -599,7 +599,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Widget _buildAboutSection() {
-    const currentVersion = '1.4.3';
+    const currentVersion = '1.4.4';
     const githubRepoUrl = 'https://github.com/LinYuanovo/JAV-Manager';
     const releasesUrl = '$githubRepoUrl/releases';
 
@@ -890,7 +890,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final result = await FilePicker.getDirectoryPath(
       dialogTitle: '选择要忽略的文件夹',
     );
-    
+
     if (result != null) {
       final folderName = result.split(Platform.pathSeparator).last;
       if (!_ignoreFolders.contains(folderName)) {

@@ -294,10 +294,59 @@ class MediaScannerService {
             final f = File(video.filePath);
             if (!await f.exists()) {
               if (video.isFavorite) {
-                if (kDebugMode) {
-                  debugPrint('[Scan] Marking favorited video as deleted: ${video.filePath}');
+                final backupRoot = path.join(libraryPath, 'Backup');
+                String backupDirPath;
+                if (video.folderPath.startsWith(backupRoot)) {
+                  backupDirPath = video.folderPath;
+                } else {
+                  backupDirPath = path.join(backupRoot,
+                      path.basename(path.dirname(video.folderPath)),
+                      path.basename(video.folderPath));
                 }
-                await _videoRepository.updateVideo(video.copyWith(isDeleted: true));
+                final backupDir = Directory(backupDirPath);
+                final backupExists = await backupDir.exists();
+
+                if (kDebugMode) {
+                  debugPrint('[Scan-Delete] video.filePath=${video.filePath}');
+                  debugPrint('[Scan-Delete] video.folderPath=${video.folderPath}');
+                  debugPrint('[Scan-Delete] video.isFavorite=${video.isFavorite}, video.isDeleted=${video.isDeleted}');
+                  debugPrint('[Scan-Delete] backupDirPath=$backupDirPath');
+                  debugPrint('[Scan-Delete] backupExists=$backupExists');
+                  if (backupExists) {
+                    final contents = await backupDir.list().toList();
+                    debugPrint('[Scan-Delete] backupContents=${contents.map((e) => path.basename(e.path)).join(', ')}');
+                  }
+                }
+
+                if (backupExists) {
+                  final backupNfo = path.join(backupDirPath, 'movie.nfo');
+                  final backupPoster = path.join(backupDirPath, 'poster.jpg');
+                  final backupFanart = path.join(backupDirPath, 'fanart.jpg');
+                  final nfoExists = await File(backupNfo).exists();
+                  final posterExists = await File(backupPoster).exists();
+                  final fanartExists = await File(backupFanart).exists();
+
+                  if (kDebugMode) {
+                    debugPrint('[Scan-Delete] nfoExists=$nfoExists, posterExists=$posterExists, fanartExists=$fanartExists');
+                  }
+
+                  await _videoRepository.updateVideo(video.copyWith(
+                    isDeleted: true,
+                    folderPath: backupDirPath,
+                    nfoPath: nfoExists ? backupNfo : null,
+                    posterPath: posterExists ? backupPoster : null,
+                    fanartPath: fanartExists ? backupFanart : null,
+                  ));
+
+                  if (kDebugMode) {
+                    debugPrint('[Scan-Delete] Updated video paths to backup: ${video.title}');
+                  }
+                } else {
+                  if (kDebugMode) {
+                    debugPrint('[Scan-Delete] No backup found, just marking deleted: ${video.title}');
+                  }
+                  await _videoRepository.updateVideo(video.copyWith(isDeleted: true));
+                }
               } else {
                 if (kDebugMode) {
                   debugPrint('[Scan] Removing DB entry for missing file: ${video.filePath} (watched=${video.isWatched}, watchCount=${video.watchCount})');
@@ -306,7 +355,40 @@ class MediaScannerService {
               }
             }
           } else if (video.isDeleted) {
+            if (kDebugMode) {
+              debugPrint('[Scan] Restoring deleted video (file found again): ${video.title}');
+            }
             await _videoRepository.updateVideo(video.copyWith(isDeleted: false));
+          } else if (video.isFavorite && (video.posterPath == null || video.fanartPath == null || video.nfoPath == null)) {
+            final backupRoot = path.join(libraryPath, 'Backup');
+            String backupDirPath;
+            if (video.folderPath.startsWith(backupRoot)) {
+              backupDirPath = video.folderPath;
+            } else {
+              backupDirPath = path.join(backupRoot,
+                  path.basename(path.dirname(video.folderPath)),
+                  path.basename(video.folderPath));
+            }
+            final backupDir = Directory(backupDirPath);
+            if (await backupDir.exists()) {
+              final backupNfo = path.join(backupDirPath, 'movie.nfo');
+              final backupPoster = path.join(backupDirPath, 'poster.jpg');
+              final backupFanart = path.join(backupDirPath, 'fanart.jpg');
+              final nfoExists = await File(backupNfo).exists();
+              final posterExists = await File(backupPoster).exists();
+              final fanartExists = await File(backupFanart).exists();
+              if (nfoExists || posterExists || fanartExists) {
+                if (kDebugMode) {
+                  debugPrint('[Scan] Patching missing paths from backup: ${video.title}');
+                }
+                await _videoRepository.updateVideo(video.copyWith(
+                  folderPath: backupDirPath,
+                  nfoPath: nfoExists ? backupNfo : video.nfoPath,
+                  posterPath: posterExists ? backupPoster : video.posterPath,
+                  fanartPath: fanartExists ? backupFanart : video.fanartPath,
+                ));
+              }
+            }
           }
         } catch (e, stackTrace) {
           if (kDebugMode) {
@@ -319,7 +401,8 @@ class MediaScannerService {
 
       await _cleanupIgnoredVideos();
 
-      // 清理没有关联视频且未收藏的演员及其本地头像
+      await _scanBackupDirectory(libraryPath);
+
       await _cleanupOrphanedActors();
 
       _log.info('Scan', 'Media Scan Complete, scanned ${mp4Files.length} files');
@@ -934,6 +1017,189 @@ class MediaScannerService {
         .replaceAll('-', ' ')
         .trim();
     return cleanName.isEmpty ? folderName : cleanName;
+  }
+
+  Future<void> _scanBackupDirectory(String libraryPath) async {
+    try {
+      final backupPath = path.join(libraryPath, 'Backup');
+      final backupDir = Directory(backupPath);
+      if (!await backupDir.exists()) {
+        if (kDebugMode) debugPrint('[Backup] Backup directory does not exist: $backupPath');
+        return;
+      }
+
+      final allVideos = await _videoRepository.getAllVideos();
+      final allCodes = <String, String>{};
+      for (final v in allVideos) {
+        final titleMatch = RegExp(r'[A-Za-z]{2,5}[-_]?\d{3,5}', caseSensitive: false).firstMatch(v.title ?? '');
+        if (titleMatch != null) {
+          allCodes[titleMatch.group(0)!.toUpperCase()] = v.filePath;
+        } else {
+          final folderName = path.basename(v.folderPath);
+          final folderMatch = RegExp(r'[A-Za-z]{2,5}[-_]?\d{3,5}', caseSensitive: false).firstMatch(folderName);
+          if (folderMatch != null) {
+            allCodes[folderMatch.group(0)!.toUpperCase()] = v.filePath;
+          }
+        }
+      }
+
+      // if (kDebugMode) {
+      //   debugPrint('[Backup] allCodes in DB: ${allCodes.keys.join(', ')}');
+      // }
+
+      final actorCache = <String, Actor>{};
+      final allActors = await _actorRepository.getAllActors();
+      for (final a in allActors) {
+        actorCache[a.name] = a;
+      }
+
+      final categoryCache = <String, Category>{};
+      final allCategories = await _categoryRepository.getAllCategories();
+      for (final c in allCategories) {
+        categoryCache['${c.type}:${c.name}'] = c;
+      }
+
+      await for (final actorEntity in backupDir.list(followLinks: false)) {
+        if (actorEntity is! Directory) continue;
+        await for (final episodeEntity in actorEntity.list(followLinks: false)) {
+          if (episodeEntity is! Directory) continue;
+
+          final episodeDirName = path.basename(episodeEntity.path);
+          final codeMatch = RegExp(r'[A-Za-z]{2,5}[-_]?\d{3,5}', caseSensitive: false).firstMatch(episodeDirName);
+          if (codeMatch == null) continue;
+          final code = codeMatch.group(0)!;
+
+          if (allCodes.containsKey(code.toUpperCase())) continue;
+
+          final nfoFilePath = path.join(episodeEntity.path, 'movie.nfo');
+          final posterFilePath = path.join(episodeEntity.path, 'poster.jpg');
+          final fanartFilePath = path.join(episodeEntity.path, 'fanart.jpg');
+
+          String? title;
+          Map<String, dynamic>? nfoData;
+          if (await File(nfoFilePath).exists()) {
+            try {
+              nfoData = await _parseNfoFile(nfoFilePath);
+              title = nfoData['title'] as String?;
+            } catch (e) {
+              if (kDebugMode) debugPrint('[Backup] Failed to parse NFO: $nfoFilePath');
+            }
+          }
+          if (title == null || title.isEmpty) {
+            title = _extractTitleFromFolderName(episodeEntity.path);
+          }
+
+          final existingByPath = await _videoRepository.getVideoByPath(nfoFilePath);
+          if (existingByPath != null) continue;
+
+          final video = Video(
+            filePath: nfoFilePath,
+            folderPath: episodeEntity.path,
+            title: title,
+            plot: nfoData?['plot'] as String?,
+            posterPath: await File(posterFilePath).exists() ? posterFilePath : null,
+            fanartPath: await File(fanartFilePath).exists() ? fanartFilePath : null,
+            nfoPath: await File(nfoFilePath).exists() ? nfoFilePath : null,
+            isFavorite: true,
+            isDeleted: true,
+          );
+
+          final videoId = await _videoRepository.insertVideo(video);
+
+          if (nfoData != null) {
+            await _processNfoDataWithCache(videoId, nfoData, actorCache, categoryCache);
+          }
+
+          if (kDebugMode) {
+            debugPrint('[Backup] Restored virtual video: $code - $title');
+          }
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[Backup] Error scanning backup directory: $e');
+      }
+    }
+  }
+
+  Future<void> backupFavoriteFiles(Video video, String libraryPath) async {
+    try {
+      final backupRoot = path.join(libraryPath, 'Backup');
+      final actorDirName = path.basename(path.dirname(video.folderPath));
+      final episodeDirName = path.basename(video.folderPath);
+
+      final backupDir = Directory(path.join(backupRoot, actorDirName, episodeDirName));
+      if (!await backupDir.exists()) {
+        await backupDir.create(recursive: true);
+      }
+
+      if (video.nfoPath != null) {
+        final src = File(video.nfoPath!);
+        if (await src.exists()) {
+          await src.copy(path.join(backupDir.path, 'movie.nfo'));
+        }
+      }
+
+      if (video.posterPath != null) {
+        final src = File(video.posterPath!);
+        if (await src.exists()) {
+          await src.copy(path.join(backupDir.path, 'poster.jpg'));
+        }
+      }
+
+      if (video.fanartPath != null) {
+        final src = File(video.fanartPath!);
+        if (await src.exists()) {
+          await src.copy(path.join(backupDir.path, 'fanart.jpg'));
+        }
+      }
+
+      if (kDebugMode) {
+        debugPrint('[Backup] Backed up favorite files to: ${backupDir.path}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[Backup] Error backing up favorite files: $e');
+      }
+    }
+  }
+
+  Future<void> deleteBackupFiles(Video video, String libraryPath) async {
+    try {
+      final backupRoot = path.join(libraryPath, 'Backup');
+      String backupDirPath;
+
+      if (video.isDeleted) {
+        backupDirPath = video.folderPath;
+      } else {
+        final actorDirName = path.basename(path.dirname(video.folderPath));
+        final episodeDirName = path.basename(video.folderPath);
+        backupDirPath = path.join(backupRoot, actorDirName, episodeDirName);
+      }
+
+      final backupDir = Directory(backupDirPath);
+      if (await backupDir.exists()) {
+        await backupDir.delete(recursive: true);
+        if (kDebugMode) {
+          debugPrint('[Backup] Deleted backup directory: $backupDirPath');
+        }
+      }
+
+      final actorDir = backupDir.parent;
+      if (await actorDir.exists()) {
+        final contents = await actorDir.list().toList();
+        if (contents.isEmpty) {
+          await actorDir.delete();
+          if (kDebugMode) {
+            debugPrint('[Backup] Deleted empty actor directory: ${actorDir.path}');
+          }
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[Backup] Error deleting backup files: $e');
+      }
+    }
   }
 
   Future<void> moveVideoToWatched(Video video, String watchedFolder) async {

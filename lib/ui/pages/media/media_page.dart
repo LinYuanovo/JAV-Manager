@@ -24,12 +24,18 @@ class _MediaPageState extends ConsumerState<MediaPage> {
   final _searchDebouncer = Debouncer();
   String _searchQuery = '';
   int _randomKey = 0;
+  int? _savedPageBeforeSearch;
 
   @override
   void initState() {
     super.initState();
     final fixedCount = ref.read(fixedColumnCountProvider);
     _columnCountController.text = fixedCount.toString();
+    final savedQuery = ref.read(mediaSearchQueryProvider);
+    if (savedQuery.isNotEmpty) {
+      _searchQuery = savedQuery;
+      _searchController.text = savedQuery;
+    }
   }
 
   @override
@@ -130,7 +136,26 @@ class _MediaPageState extends ConsumerState<MediaPage> {
             child: GlassSearchBar(
               controller: _searchController,
               hintText: '搜索视频...',
-              onChanged: (value) => _searchDebouncer.run(() => setState(() => _searchQuery = value)),
+              onChanged: (value) => _searchDebouncer.run(() {
+                final oldQuery = _searchQuery;
+                final newQuery = value;
+
+                if (oldQuery.isEmpty && newQuery.isNotEmpty) {
+                  _savedPageBeforeSearch = ref.read(mediaCurrentPageProvider);
+                }
+
+                setState(() => _searchQuery = newQuery);
+                ref.read(sharedPreferencesProvider).setString('media_search_query', newQuery);
+
+                ref.read(mediaCurrentPageProvider.notifier).state = 1;
+                ref.read(sharedPreferencesProvider).setInt('media_current_page', 1);
+
+                if (newQuery.isEmpty && _savedPageBeforeSearch != null) {
+                  ref.read(mediaCurrentPageProvider.notifier).state = _savedPageBeforeSearch!;
+                  ref.read(sharedPreferencesProvider).setInt('media_current_page', _savedPageBeforeSearch!);
+                  _savedPageBeforeSearch = null;
+                }
+              }),
             ),
           ),
           const SizedBox(width: GlassConstants.spacingMedium),
@@ -435,7 +460,17 @@ class _MediaPageState extends ConsumerState<MediaPage> {
           await _playVideo(video);
           break;
         case 'favorite':
-          await repository.toggleFavorite(video.id!, !video.isFavorite);
+          final wasFav = video.isFavorite;
+          await repository.toggleFavorite(video.id!, !wasFav);
+          final libPath = ref.read(sharedPreferencesProvider).getString('library_path') ?? '';
+          if (libPath.isNotEmpty) {
+            final scanner = ref.read(mediaScannerServiceProvider);
+            if (!wasFav) {
+              await scanner.backupFavoriteFiles(video, libPath);
+            } else {
+              await scanner.deleteBackupFiles(video, libPath);
+            }
+          }
           ref.invalidate(allVideosProvider);
           ref.invalidate(favoriteVideosProvider);
           break;
@@ -470,7 +505,18 @@ class _MediaPageState extends ConsumerState<MediaPage> {
 
   void _toggleFavorite(Video video) async {
     final repository = ref.read(videoRepositoryProvider);
-    await repository.updateVideo(video.copyWith(isFavorite: !video.isFavorite));
+    final wasFavorite = video.isFavorite;
+    await repository.updateVideo(video.copyWith(isFavorite: !wasFavorite));
+    final prefs = ref.read(sharedPreferencesProvider);
+    final libraryPath = prefs.getString('library_path') ?? '';
+    if (libraryPath.isNotEmpty) {
+      final scanner = ref.read(mediaScannerServiceProvider);
+      if (!wasFavorite) {
+        await scanner.backupFavoriteFiles(video, libraryPath);
+      } else {
+        await scanner.deleteBackupFiles(video, libraryPath);
+      }
+    }
     ref.invalidate(allVideosProvider);
     ref.invalidate(favoriteVideosProvider);
   }
