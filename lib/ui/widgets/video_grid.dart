@@ -535,8 +535,10 @@ class _VideoCardState extends ConsumerState<_VideoCard>
   }
 
   Widget _buildDeletedPlaceholder({bool preferPoster = false}) {
-    final hasBackupPoster = widget.video.posterPath != null;
-    final hasBackupFanart = widget.video.fanartPath != null;
+    final posterFile = widget.video.posterPath != null ? File(widget.video.posterPath!) : null;
+    final fanartFile = widget.video.fanartPath != null ? File(widget.video.fanartPath!) : null;
+    final hasBackupPoster = posterFile != null && posterFile.existsSync();
+    final hasBackupFanart = fanartFile != null && fanartFile.existsSync();
 
     if (hasBackupPoster || hasBackupFanart) {
       final primaryPath = preferPoster
@@ -967,8 +969,10 @@ class _VideoListItem extends ConsumerWidget {
   }
 
   Widget _buildDeletedListItem() {
-    final hasBackupPoster = video.posterPath != null;
-    final hasBackupFanart = video.fanartPath != null;
+    final posterFile = video.posterPath != null ? File(video.posterPath!) : null;
+    final fanartFile = video.fanartPath != null ? File(video.fanartPath!) : null;
+    final hasBackupPoster = posterFile != null && posterFile.existsSync();
+    final hasBackupFanart = fanartFile != null && fanartFile.existsSync();
 
     return GlassContainer(
       margin: const EdgeInsets.only(bottom: 8),

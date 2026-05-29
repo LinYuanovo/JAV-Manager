@@ -93,8 +93,10 @@ class _VideoDetailDialogState extends ConsumerState<VideoDetailDialog>
     final pureMode = ref.watch(pureModeProvider);
 
     if (widget.video.isDeleted) {
-      final hasBackupFanart = widget.video.fanartPath != null;
-      final hasBackupPoster = widget.video.posterPath != null;
+      final fanartFile = widget.video.fanartPath != null ? File(widget.video.fanartPath!) : null;
+      final posterFile = widget.video.posterPath != null ? File(widget.video.posterPath!) : null;
+      final hasBackupFanart = fanartFile != null && fanartFile.existsSync();
+      final hasBackupPoster = posterFile != null && posterFile.existsSync();
 
       if (hasBackupFanart || hasBackupPoster) {
         return SizedBox(

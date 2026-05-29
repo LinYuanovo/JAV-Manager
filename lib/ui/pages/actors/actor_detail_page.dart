@@ -559,7 +559,17 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
           await _playVideo(video);
           break;
         case 'favorite':
-          await repository.toggleFavorite(video.id!, !video.isFavorite);
+          final wasFav = video.isFavorite;
+          await repository.toggleFavorite(video.id!, !wasFav);
+          final libPath = ref.read(sharedPreferencesProvider).getString('library_path') ?? '';
+          if (libPath.isNotEmpty) {
+            final scanner = ref.read(mediaScannerServiceProvider);
+            if (!wasFav) {
+              await scanner.backupFavoriteFiles(video, libPath);
+            } else {
+              await scanner.deleteBackupFiles(video, libPath);
+            }
+          }
           ref.invalidate(videosByActorProvider(_actor.id!));
           ref.invalidate(allVideosProvider);
           break;
@@ -573,7 +583,18 @@ class _ActorDetailPageState extends ConsumerState<ActorDetailPage>
   Future<void> _toggleVideoFavorite(Video video) async {
     try {
       final repository = ref.read(videoRepositoryProvider);
-      await repository.toggleFavorite(video.id!, !video.isFavorite);
+      final wasFavorite = video.isFavorite;
+      await repository.toggleFavorite(video.id!, !wasFavorite);
+      final prefs = ref.read(sharedPreferencesProvider);
+      final libraryPath = prefs.getString('library_path') ?? '';
+      if (libraryPath.isNotEmpty) {
+        final scanner = ref.read(mediaScannerServiceProvider);
+        if (!wasFavorite) {
+          await scanner.backupFavoriteFiles(video, libraryPath);
+        } else {
+          await scanner.deleteBackupFiles(video, libraryPath);
+        }
+      }
       ref.invalidate(videosByActorProvider(_actor.id!));
       ref.invalidate(allVideosProvider);
       ref.invalidate(favoriteVideosProvider);

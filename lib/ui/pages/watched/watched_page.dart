@@ -261,7 +261,18 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
   Future<void> _toggleFavorite(Video video) async {
     try {
       final repository = ref.read(videoRepositoryProvider);
-      await repository.toggleFavorite(video.id!, !video.isFavorite);
+      final wasFavorite = video.isFavorite;
+      await repository.toggleFavorite(video.id!, !wasFavorite);
+      final prefs = ref.read(sharedPreferencesProvider);
+      final libraryPath = prefs.getString('library_path') ?? '';
+      if (libraryPath.isNotEmpty) {
+        final scanner = ref.read(mediaScannerServiceProvider);
+        if (!wasFavorite) {
+          await scanner.backupFavoriteFiles(video, libraryPath);
+        } else {
+          await scanner.deleteBackupFiles(video, libraryPath);
+        }
+      }
       ref.invalidate(watchedVideosProvider);
       ref.invalidate(allVideosProvider);
       ref.invalidate(favoriteVideosProvider);
@@ -308,6 +319,14 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
       position: RelativeRect.fromLTRB(position.dx, position.dy, position.dx + 1, position.dy + 1),
       items: <PopupMenuEntry<String>>[
         const PopupMenuItem(value: 'play', child: ListTile(leading: Icon(Icons.play_arrow), title: Text('播放'), dense: true)),
+        PopupMenuItem(
+          value: 'favorite',
+          child: ListTile(
+            leading: Icon(video.isFavorite ? Icons.favorite : Icons.favorite_border),
+            title: Text(video.isFavorite ? '取消收藏' : '收藏'),
+            dense: true,
+          ),
+        ),
         const PopupMenuItem(value: 'cancel_watched', child: ListTile(leading: Icon(Icons.visibility_off), title: Text('取消已观看'), dense: true)),
         const PopupMenuItem(value: 'folder', child: ListTile(leading: Icon(Icons.folder_open), title: Text('打开文件夹'), dense: true)),
         if (video.actors.isNotEmpty)
@@ -336,6 +355,9 @@ class _WatchedPageState extends ConsumerState<WatchedPage> {
       switch (value) {
         case 'play':
           await _playVideo(video);
+          break;
+        case 'favorite':
+          await _toggleFavorite(video);
           break;
         case 'cancel_watched':
           await repository.resetWatchStatus(video.id!);
